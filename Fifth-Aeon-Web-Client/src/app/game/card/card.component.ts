@@ -169,6 +169,12 @@ function getTokenUnits(): Map<string, Unit> {
             .getCards()
             .filter(card => card instanceof Unit)
             .forEach(card => {
+                // Skip nameless cards: an empty name would become an empty
+                // keyword that zero-length matches everywhere in the text
+                // scan and shreds [depleted]/[dynamic] markers apart.
+                if (!card.getName()) {
+                    return;
+                }
                 map.set(card.getName(), card as Unit);
             });
         tokenUnitsCache = { locale, map };
@@ -207,12 +213,15 @@ function buildKeywordScan(locale: string): KeywordScan {
     }
     const tokenNames = Array.from(getTokenUnits().keys());
     tokenNames.forEach(name => alias.set(name, name));
+    // Empty tokens would zero-length match at every symbol boundary
+    const allTokens = tokens
+        .concat(tokenNames)
+        .filter(token => token && token.length > 0);
     return {
         locale,
-        extractRegex: new RegExp(tokens.concat(tokenNames).join('|'), 'gi'),
+        extractRegex: new RegExp(allTokens.join('|'), 'gi'),
         wordRegex: new RegExp(
-            tokens
-                .concat(tokenNames)
+            allTokens
                 .map(token => `(?<![\\w\\u4e00-\\u9fa5])${token}(?![\\w\\u4e00-\\u9fa5])`)
                 .join('|'),
             'gi'
@@ -400,8 +409,10 @@ export class CardComponent implements OnInit {
 
     public htmlText(text: string) {
         const { wordRegex } = this.getKeywordScan();
+        // Convert markers FIRST. Keyword bolding must run afterwards:
+        // a match inside "[depleted]"/"[dynamic]" would shred the markers
+        // apart and leave them visible as raw text.
         return text
-            .replace(wordRegex, sub => `<b>${sub}</b>`)
             .replace(
                 depletedRegex,
                 (_, content) => `<span class="depleted">${content}</span>`
@@ -409,7 +420,8 @@ export class CardComponent implements OnInit {
             .replace(
                 dynamicRegex,
                 (_, content) => `<span class="dynamic">${content}</span>`
-            );
+            )
+            .replace(wordRegex, sub => `<b>${sub}</b>`);
     }
 
     private getKeywordScan(): KeywordScan {

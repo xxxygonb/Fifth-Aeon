@@ -1,0 +1,34 @@
+No Sendgrid API Key found in SENDGRID_API_KEY environment variable. Emails will not be sent.
+Starting Server on port 2222
+Server started on port 2222
+[0mGET /report [32m200[0m 2.866 ms - 198[0m
+[0mGET / [33m404[0m 2.054 ms - 139[0m
+[0mGET /api/auth/userdata [32m200[0m 110.865 ms - 266[0m
+[0mGET /api/cards/getCollection [32m200[0m 2.336 ms - 757[0m
+[0mGET /api/modding/getUserCards [36m304[0m 22.945 ms - -[0m
+[0mGET /api/cards/checkDaily [32m200[0m 2.526 ms - 41[0m
+[0mGET /api/modding/getUserSetMemberships [36m304[0m 159.571 ms - -[0m
+[0mGET /api/modding/userSets [36m304[0m 206.933 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 239.621 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 2.002 ms - -[0m
+[0mGET /api/modding/getActiveSets [36m304[0m 264.072 ms - -[0m
+[0mGET / [33m404[0m 0.541 ms - 139[0m
+[0mGET /api/auth/userdata [32m200[0m 70.616 ms - 268[0m
+[0mGET /api/cards/getCollection [36m304[0m 1.797 ms - -[0m
+[0mGET /api/modding/getUserCards [36m304[0m 2.111 ms - -[0m
+[0mGET /api/modding/userSets [36m304[0m 2.189 ms - -[0m
+[0mGET /api/modding/getUserSetMemberships [36m304[0m 3.900 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 1.861 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 1.440 ms - -[0m
+[0mGET /api/cards/checkDaily [32m200[0m 1.405 ms - 41[0m
+[0mGET /api/modding/getActiveSets [36m304[0m 98.635 ms - -[0m
+[0mGET / [33m404[0m 0.412 ms - 139[0m
+[0mGET /api/auth/userdata [32m200[0m 100.026 ms - 268[0m
+[0mGET /api/cards/getCollection [36m304[0m 2.395 ms - -[0m
+[0mGET /api/modding/userSets [36m304[0m 2.412 ms - -[0m
+[0mGET /api/modding/getActiveSets [36m304[0m 3.942 ms - -[0m
+[0mGET /api/cards/checkDaily [32m200[0m 1.156 ms - 41[0m
+[0mGET /api/modding/getUserSetMemberships [36m304[0m 160.638 ms - -[0m
+[0mGET /api/modding/getUserCards [36m304[0m 180.890 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 195.605 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 1.286 ms - -[0m

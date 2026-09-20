@@ -332,3 +332,38 @@
 ## 遗留事项（更新后）
 
 仅剩高危问题 #1 ~ #5（admin 鉴权、轮抽奖励服务端校验、WS 冒名、非 JSON 消息防崩、JWT 默认密钥）等待确认处理。
+
+---
+
+# 补充修复：卡牌效果文本标记泄漏（用户实测反馈）
+
+## 现象
+
+对局中卡牌"狼崽"（Wolf Pup）的效果文本显示为原始标记：
+`共鸣：[deleted] 令此单位获得 0/+1。 [/耗尽]`；同类问题还影响所有携带 `[dynamic]...[/dynamic]` 标记的卡牌（如"唤起骷髅"显示 `打出一个骷髅 [dynamic](0)[/dynamic]。`）。
+
+## 原因
+
+卡牌文本使用 `[depleted]...[/depleted]`（触发后失效的效果，渲染为灰色）和 `[dynamic](n)[/dynamic]`（动态数值）标记，由 [card.component.ts](../Fifth-Aeon-Web-Client/src/app/game/card/card.component.ts) 的 `htmlText()` 转换为带样式的 HTML。两个缺陷叠加导致标记原样显示：
+
+1. **关键词扫描表混入空字符串**：`getTokenUnits()` 把所有 Unit 卡（包括 `name` 为空的衍生物卡）的卡名登记为关键词；空名关键词的正则交替项可零长度匹配，在文本的每个符号边界（`[`、`]`、`(`、`)`、句号前后）插入空的 `<b></b>`，把 `[...]` 标记从内部切碎（实测 DOM：`[<b></b>/dynamic]`），后续标记转换正则彻底失配。
+2. **替换顺序错误**：`htmlText` 先做关键词加粗、后做标记转换——加粗对标记内部的任何匹配都会破坏标记结构。
+
+（"狼崽"是共鸣触发后进入 `triggered` 状态、文本带 `[depleted]` 包裹的典型卡，因此最先暴露。此前 138 卡扫描只验证数据层 `t()` 输出，未覆盖客户端渲染链，故未发现。）
+
+## 是否修复
+
+已修复。
+
+## 修复方式
+
+[card.component.ts](../Fifth-Aeon/Fifth-Aeon-Web-Client/src/app/game/card/card.component.ts) 三处：
+1. `getTokenUnits()` 跳过无名卡（空名不入关键词表）；
+2. `buildKeywordScan()` 统一过滤空 token（双保险）；
+3. `htmlText()` 调整替换顺序：先转换 `[depleted]`/`[dynamic]` 标记为 span，再做关键词加粗。
+
+## 验证
+
+- 浏览器实测（ng serve 热更新后重新进对局）：「唤起骷髅」文本渲染为 `打出一个骷髅 (0)。`，DOM 中出现 `<span class="dynamic">`，空 `<b></b>` 数量为 0；
+- `npx ng build` 构建通过。
+- 附带收益：关键词加粗在全部卡牌上恢复正常（此前被空匹配污染，没有任何词被真正加粗）。
