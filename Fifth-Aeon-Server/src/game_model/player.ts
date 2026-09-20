@@ -184,7 +184,16 @@ export class Player extends Unit {
         cb?: (cards: Card[]) => void
     ) {
         if (count >= this.hand.length) {
-            this.hand = [];
+            // Discarding the whole hand must still send the cards to the
+            // crypt and fire the callback, same as the partial-discard path.
+            const discarded = [...this.hand];
+            discarded.forEach(card => {
+                this.removeCardFromHand(card);
+                game.addToCrypt(card);
+            });
+            if (cb) {
+                cb(discarded);
+            }
             return;
         }
         game.promptCardChoice(

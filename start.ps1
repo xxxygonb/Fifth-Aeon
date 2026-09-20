@@ -45,7 +45,24 @@ if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
     Write-Host '[WARN] psql not found in PATH. Server may still work if PostgreSQL is running.'
 } else {
     Write-Host '[OK] psql found'
-    if (-not $env:PGPASSWORD) { $env:PGPASSWORD = 'postgres' }
+    if (-not $env:PGPASSWORD) {
+        # Prefer the password from the server config's connection string
+        $cfgPass = $null
+        if (Test-Path $serverConfig) {
+            try {
+                $connStr = (Get-Content $serverConfig -Raw | ConvertFrom-Json).connectionString
+                if ("$connStr" -match '^postgres://[^:]+:([^@]+)@') {
+                    $cfgPass = $Matches[1]
+                }
+            } catch { }
+        }
+        if ($cfgPass) {
+            $env:PGPASSWORD = $cfgPass
+            Write-Host '[OK] Using database password from config.json'
+        } else {
+            $env:PGPASSWORD = 'postgres'
+        }
+    }
     $dbExists = & psql -U postgres -h localhost -tAc "SELECT 1 FROM pg_database WHERE datname='ccg'" 2>$null
     if ("$dbExists".Trim() -eq '1') {
         Write-Host '[OK] Database ccg exists'

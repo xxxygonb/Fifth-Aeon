@@ -127,6 +127,11 @@ export class CollectionService {
                         cardList.getCard(id)
                     );
                 }
+            })
+            .catch(err => {
+                // Non-fatal: a failed daily check must not produce an
+                // unhandled rejection on every page load
+                console.warn('Daily reward check failed', err);
             });
     }
 
@@ -178,10 +183,15 @@ export class CollectionService {
                 });
             })
             .catch(errData => {
-                if (errData.error) {
-                    this.collection.removePack();
-                }
-                return errData.error ? errData.error.message : errData.message;
+                // Server rejected the open: do NOT touch the local
+                // collection - removing a pack here would lose it for good
+                // once the next save() persists the state.
+                const message = errData && errData.error
+                    ? errData.error.message
+                    : errData && errData.message
+                        ? errData.message
+                        : 'Unknown error';
+                return message;
             });
     }
 

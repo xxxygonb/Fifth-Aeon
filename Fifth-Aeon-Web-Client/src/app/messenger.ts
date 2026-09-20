@@ -1,4 +1,5 @@
 import { Queue } from 'typescript-collections';
+import { Subscription } from 'rxjs';
 import { getWsUrl } from './url';
 import { NetworkInterface } from './network-interface';
 import { P2PTransport } from './p2p-transport';
@@ -73,6 +74,9 @@ export class Messenger implements NetworkInterface {
     }
 
     public setP2PTransport(p2p: P2PTransport | null) {
+        // Detach old subscriptions first so finished P2P games can be GC'd
+        this.p2pSubscriptions.forEach(s => s.unsubscribe());
+        this.p2pSubscriptions = [];
         if (this.p2p) {
             this.p2p.destroy();
         }
@@ -82,12 +86,16 @@ export class Messenger implements NetworkInterface {
             // We should probably close WS if it's open, or just ignore it
             this.close();
 
-            this.p2p.connected$.subscribe(connected => {
-                this.onConnectChange(connected);
-            });
-            this.p2p.data$.subscribe(data => {
-                this.handleMessage({ data: data } as MessageEvent); // handleMessage expects MessageEvent
-            });
+            this.p2pSubscriptions.push(
+                this.p2p.connected$.subscribe(connected => {
+                    this.onConnectChange(connected);
+                })
+            );
+            this.p2pSubscriptions.push(
+                this.p2p.data$.subscribe(data => {
+                    this.handleMessage({ data: data } as MessageEvent); // handleMessage expects MessageEvent
+                })
+            );
 
             // Trigger initial state
             this.onConnectChange(this.p2p.isConnected());
@@ -99,6 +107,9 @@ export class Messenger implements NetworkInterface {
     }
 
     private p2p: P2PTransport | null = null;
+    private p2pSubscriptions: Subscription[] = [];
+    private reconnectTimer?: any;
+    private pingTimer?: any;
 
     public setID(id: string) {
         this.id = id;
@@ -114,6 +125,11 @@ export class Messenger implements NetworkInterface {
     public startConnection(maxConnectAttempts?: number) {
         this.maxConnectAttempts = maxConnectAttempts !== undefined ? maxConnectAttempts : this.maxConnectAttempts;
 
+        // Already started: never stack duplicate timers
+        if (this.reconnectTimer) {
+            return;
+        }
+
         // Firefox does not allow you to open a connection via the ws protocol if the page is served via https
         // So if we try to do that, abort
         if (
@@ -127,7 +143,7 @@ export class Messenger implements NetworkInterface {
             this.enabled = false;
             return;
         }
-        setInterval(() => {
+        this.reconnectTimer = setInterval(() => {
             if (this.p2p) return; // Don't auto-reconnect WS if in P2P mode
 
             if (!this.id || !this.ws || this.ws.readyState === this.ws.OPEN) {
@@ -136,11 +152,27 @@ export class Messenger implements NetworkInterface {
             console.log('Attempting automatic reconnect');
             this.connect();
         }, autoReconnectTime);
-        setInterval(
-            () => this.sendMessageToServer(MessageType.Ping, {}),
-            pingTime
-        );
+        this.pingTimer = setInterval(() => {
+            // Skip pings while disconnected - they would pile up in the
+            // offline queue and flood the server on reconnect
+            if (this.isConnected()) {
+                this.sendMessageToServer(MessageType.Ping, {});
+            }
+        }, pingTime);
         this.connect();
+    }
+
+    /** Permanently stops the reconnect/ping timers. */
+    public destroy() {
+        if (this.reconnectTimer) {
+            clearInterval(this.reconnectTimer);
+            this.reconnectTimer = undefined;
+        }
+        if (this.pingTimer) {
+            clearInterval(this.pingTimer);
+            this.pingTimer = undefined;
+        }
+        this.close();
     }
 
     private connect() {

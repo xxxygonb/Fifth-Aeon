@@ -20,6 +20,9 @@ interface GuestData extends UserData {
 export class AuthenticationService {
     private user: UserData | null = null;
     private authChangeCallbacks: Array<(user: UserData | null) => void> = [];
+    // Shared "waiting for first login" promise so afterLogin() does not
+    // append a new never-removed callback on every call.
+    private afterLoginPromise: Promise<UserData> | null = null;
     private redirectTarget = 'lobby';
 
     constructor(private http: HttpClient, private router: Router) { }
@@ -67,13 +70,16 @@ export class AuthenticationService {
         if (this.user != null) {
             return Promise.resolve(this.user);
         }
-        return new Promise(resolve => {
-            this.onAuth(user => {
-                if (user !== null) {
-                    resolve(user);
-                }
+        if (!this.afterLoginPromise) {
+            this.afterLoginPromise = new Promise(resolve => {
+                this.onAuth(user => {
+                    if (user !== null) {
+                        resolve(user);
+                    }
+                });
             });
-        });
+        }
+        return this.afterLoginPromise;
     }
 
     public setRedirect(redirect: string) {
@@ -106,6 +112,7 @@ export class AuthenticationService {
 
     public logout() {
         this.user = null;
+        this.afterLoginPromise = null;
         localStorage.setItem('login', '');
         this.authChangeCallbacks.forEach(callback => callback(null));
         this.router.navigateByUrl('/');

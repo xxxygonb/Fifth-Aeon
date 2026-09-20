@@ -303,7 +303,14 @@ export class WebClient {
         const rewardMessage = this.getGameReward
             ? this.getGameReward(playerWon)
             : this.collection.onGameEnd(playerWon, quit);
-        rewardMessage.then(msg => (dialogRef.componentInstance.rewards = msg));
+        rewardMessage
+            .then(msg => (dialogRef.componentInstance.rewards = msg))
+            .catch(e => {
+                console.error('Failed to load rewards', e);
+                dialogRef.componentInstance.rewards = this.i18n.tr(
+                    'Failed to load rewards.'
+                );
+            });
         dialogRef.afterClosed().subscribe(result => {
             this.gameManager.reset();
             this.returnToLobby();

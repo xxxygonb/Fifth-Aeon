@@ -37,7 +37,13 @@ export class DraftService {
             })
             .catch(resp => {
                 console.error(resp);
-                return resp.error.message as String;
+                // Network-level failures have no error body
+                const message = resp && resp.error && resp.error.message
+                    ? resp.error.message
+                    : resp && resp.message
+                        ? resp.message
+                        : 'Unknown error';
+                return message as String;
             });
     }
 
@@ -85,6 +91,9 @@ export class DraftService {
             throw new Error('Draft not in progress');
         }
         this.currentDraft.retire();
+        // Clear any leftover reward callback: it would throw on the next
+        // regular game's end dialog and leave it stuck on loading rewards.
+        this.client.getGameReward = null;
         return CollectionService.describeReward(await this.endDraft());
     }
 

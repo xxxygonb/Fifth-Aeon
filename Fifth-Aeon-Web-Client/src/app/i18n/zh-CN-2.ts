@@ -5,6 +5,7 @@
 export const zhCNUI2: Record<string, string> = {
     // ---- Misc ----------------------------------------------------------
     Dismiss: '关闭',
+    'Failed to load rewards.': '奖励加载失败',
     and: '和',
     'with': '，具有',
     empower: '强化',

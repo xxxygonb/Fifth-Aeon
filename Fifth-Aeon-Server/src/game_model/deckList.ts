@@ -147,13 +147,14 @@ export class DeckList {
         return currValue < limit;
     }
 
-    public addCard(card: Card) {
+    public addCard(card: Card): boolean {
         if (!this.canAddCard(card)) {
-            return;
+            return false;
         }
         const currValue = this.records.get(card.getDataId()) || 0;
         this.records.set(card.getDataId(), currValue + 1);
         this.cardCount++;
+        return true;
     }
 
     public isValid(cardPool?: DeckList) {

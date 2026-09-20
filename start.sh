@@ -19,7 +19,14 @@ fail() { echo "[ERROR] $1"; exit 1; }
 command -v node >/dev/null 2>&1 || fail "Node.js not found. Please install Node.js 16+."
 echo "[OK] Node.js $(node --version)"
 
-# ---- 2. Check PostgreSQL ----
+# ---- 2. Server config (created from template on first run) ----
+if [ ! -f "$ROOT/Fifth-Aeon-Server/config.json" ] && [ -f "$ROOT/Fifth-Aeon-Server/config.example.json" ]; then
+    cp "$ROOT/Fifth-Aeon-Server/config.example.json" "$ROOT/Fifth-Aeon-Server/config.json"
+    echo "[OK] Created Fifth-Aeon-Server/config.json from config.example.json"
+    echo "     Edit it if your PostgreSQL password is not \"postgres\"."
+fi
+
+# ---- 3. Check PostgreSQL ----
 PSQL=""
 command -v psql >/dev/null 2>&1 && PSQL=psql
 if [ -z "$PSQL" ]; then
@@ -37,7 +44,7 @@ else
     fi
 fi
 
-# ---- 3. Install dependencies if missing ----
+# ---- 4. Install dependencies if missing ----
 if [ ! -d "$ROOT/Fifth-Aeon-Server/node_modules" ]; then
     echo "[..] Installing server dependencies ..."
     (cd "$ROOT/Fifth-Aeon-Server" && npm install --no-audit --no-fund >>"$LOGDIR/install-server.log" 2>&1) \
@@ -54,18 +61,15 @@ else
     echo "[OK] Client dependencies present"
 fi
 
-# ---- 4. Build server if needed ----
-if [ ! -f "$ROOT/Fifth-Aeon-Server/dist/index.js" ]; then
-    echo "[..] Compiling server ..."
-    (cd "$ROOT/Fifth-Aeon-Server" && npx gulp scripts >>"$LOGDIR/build-server.log" 2>&1) \
-        && echo "[OK] Server compiled" || fail "server build failed (see logs/build-server.log)"
-else
-    echo "[OK] Server build present"
-fi
+# ---- 5. Compile server (always incremental, avoids stale dist) ----
+echo "[..] Compiling server ..."
+(cd "$ROOT/Fifth-Aeon-Server" && npx gulp scripts >>"$LOGDIR/build-server.log" 2>&1) \
+    && echo "[OK] Server compiled" || fail "server build failed (see logs/build-server.log)"
 
-# ---- 5. Stop anything already on port 2222 ----
+# ---- 6. Stop anything already on our ports ----
 if command -v fuser >/dev/null 2>&1; then
     fuser -k 2222/tcp 2>/dev/null
+    fuser -k 4200/tcp 2>/dev/null
 fi
 
 PIDS=()
@@ -77,32 +81,36 @@ cleanup() {
 }
 trap cleanup INT TERM
 
-# ---- 6. Start server ----
+# ---- 7. Start server ----
 echo "[..] Starting game server on port 2222 ..."
 (cd "$ROOT/Fifth-Aeon-Server" && node dist/index.js >"$LOGDIR/server.log" 2>&1) &
 PIDS+=($!)
 
-# ---- 7. Start web client ----
+# ---- 8. Start web client ----
 echo "[..] Starting web client on port 4200 ..."
 (cd "$ROOT/Fifth-Aeon-Web-Client" && npx ng serve >"$LOGDIR/client.log" 2>&1) &
 PIDS+=($!)
 
-# ---- 8. Wait and verify ----
-echo "[..] Waiting for services (up to 90s) ..."
+# ---- 9. Wait and verify ----
+echo "[..] Waiting for services (up to 120s) ..."
 SERVER_UP=0
-for i in $(seq 1 30); do
+CLIENT_UP=0
+for i in $(seq 1 40); do
     sleep 3
-    if [ "$SERVER_UP" = 0 ] && curl -s -o /dev/null http://localhost:2222/report; then
+    if [ "$SERVER_UP" = 0 ] && curl -s -o /dev/null --noproxy '*' http://localhost:2222/report; then
         SERVER_UP=1
         echo "[OK] Server is up: http://localhost:2222"
     fi
-    if curl -s -o /dev/null http://localhost:4200; then
+    if [ "$CLIENT_UP" = 0 ] && curl -s -o /dev/null --noproxy '*' http://localhost:4200; then
+        CLIENT_UP=1
         echo "[OK] Web client is up: http://localhost:4200"
+    fi
+    if [ "$SERVER_UP" = 1 ] && [ "$CLIENT_UP" = 1 ]; then
         break
     fi
-    if [ "$i" = 30 ]; then
+    if [ "$i" = 40 ]; then
         [ "$SERVER_UP" = 0 ] && echo "[WARN] Server not responding - check logs/server.log"
-        echo "[WARN] Web client not responding - check logs/client.log (first compile can take 1-2 min)"
+        [ "$CLIENT_UP" = 0 ] && echo "[WARN] Web client not responding - check logs/client.log (first compile can take 1-2 min)"
     fi
 done
 

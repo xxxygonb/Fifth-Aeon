@@ -31,8 +31,10 @@ export interface GameReplay {
 }
 
 export class ServerGame extends Game {
-    private static rng: Prando;
-    private static seed: string | number;
+    private static seed: string | number = 0;
+    // Per-instance RNG: concurrent games must never share a random stream,
+    // otherwise recorded seeds can no longer replay a game deterministically.
+    private rng: Prando;
     protected actionSystem = new GameActionSystem(this);
 
     // Replay information
@@ -41,7 +43,7 @@ export class ServerGame extends Game {
     protected deckLists: [DeckList, DeckList];
 
     public static setSeed(seed: string | number) {
-        this.rng = new Prando(seed);
+        ServerGame.seed = seed;
     }
 
     constructor(
@@ -53,6 +55,7 @@ export class ServerGame extends Game {
         this.addActionHandlers();
 
         this.seed = ServerGame.seed;
+        this.rng = new Prando(this.seed);
         this.deckLists = deckLists;
 
         const decks = deckLists.map(deckList => {
@@ -106,7 +109,7 @@ export class ServerGame extends Game {
             this.currentChoices[0] !== null &&
             this.currentChoices[1] !== null
         ) {
-            return ServerGame.rng.nextInt(0, 1);
+            return this.rng.nextInt(0, 1);
         } else if (this.currentChoices[0] !== null) {
             return 0;
         } else {
@@ -118,7 +121,7 @@ export class ServerGame extends Game {
         const copies = [...items];
         const end = copies.length - 1;
         for (let i = 0; i < end; i++) {
-            const swapPos = ServerGame.rng.nextInt(i + 1, end);
+            const swapPos = this.rng.nextInt(i + 1, end);
             const temp = copies[swapPos];
             copies[swapPos] = copies[i];
             copies[i] = temp;
@@ -209,23 +212,33 @@ export class ServerGame extends Game {
      */
     public handleAction(action: GameAction): GameSyncEvent[] | null {
         const mark = this.events.length;
-        if (
-            action.type !== GameActionType.CardChoice &&
-            action.type !== GameActionType.Quit &&
-            (this.currentChoices[0] !== null || this.currentChoices[1] !== null)
-        ) {
-            console.error(
-                `Cant take action, ${GameActionType[action.type]} waiting for`,
-                this.currentChoices
-            );
+        try {
+            if (
+                action.type !== GameActionType.CardChoice &&
+                action.type !== GameActionType.Quit &&
+                (this.currentChoices[0] !== null ||
+                    this.currentChoices[1] !== null)
+            ) {
+                console.error(
+                    `Cant take action, ${GameActionType[action.type]} waiting for`,
+                    this.currentChoices
+                );
+                return null;
+            }
+            const sig = this.actionSystem.handleAction(action);
+            if (sig !== true) {
+                return null;
+            }
+            // Only successful actions belong in the replay log, otherwise
+            // replaying would diverge from what actually happened.
+            this.actionLog.push(action);
+            return this.events.slice(mark);
+        } catch (e) {
+            // Unknown card/unit ids or other bad client input must never
+            // take down the action pipeline - reject and keep playing.
+            console.error('Rejected action with error', action, e);
             return null;
         }
-        const sig = this.actionSystem.handleAction(action);
-        this.actionLog.push(action);
-        if (sig !== true) {
-            return null;
-        }
-        return this.events.slice(mark);
     }
 
     protected addActionHandlers() {
@@ -455,11 +468,13 @@ export class ServerGame extends Game {
         if (act.blockedId === null) {
             blocker.setBlocking(null);
         } else {
+            // Validate before mutating: a rejected block must not leave
+            // blocking state on the board.
             const blocked = this.getPlayerUnitById(this.turn, act.blockedId);
-            blocker.setBlocking(blocked.getId());
             if (!blocked || !blocker.canBlockTarget(blocked)) {
                 return false;
             }
+            blocker.setBlocking(blocked.getId());
         }
 
         this.addGameEvent({

@@ -1,4 +1,4 @@
-﻿import { Card } from './card-types/card';
+﻿﻿import { Card } from './card-types/card';
 import { t, tf } from './i18n';
 import { properList } from '../game_model/strings';
 import { Unit } from './card-types/unit';

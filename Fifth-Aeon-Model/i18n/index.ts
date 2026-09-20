@@ -24,6 +24,11 @@ const dictionaries: Record<Locale, Record<string, string>> = {
 };
 
 export function setLocale(l: Locale) {
+    // Guard: an invalid locale would make every t()/tf() call throw
+    if (!(l in dictionaries)) {
+        console.warn(`Unknown locale "${l}", keeping "${locale}"`);
+        return;
+    }
     locale = l;
 }
 

@@ -106,7 +106,12 @@ export class Draft {
         if (!this.choices.has(picked)) {
             return;
         }
-        this.deck.addCard(picked);
+        if (!this.deck.addCard(picked)) {
+            // The card hit its copy limit (e.g. 4th copy): drop it from this
+            // round's options instead of silently consuming the player's pick.
+            this.choices.delete(picked);
+            return;
+        }
         this.pickNumber++;
         this.choices = new Set();
         if (this.pickNumber === Draft.format.minDeckSize) {

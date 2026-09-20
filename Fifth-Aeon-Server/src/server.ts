@@ -24,7 +24,7 @@ import { moddingRouter } from "./routes/mods.routes";
 import { adminRouter } from "./routes/admin.routes";
 
 // 1 hour
-const cleaningTime = 1000 * 60 * 60 * 60;
+const cleaningTime = 1000 * 60 * 60;
 
 /**
  * Server that holds references to all the components of the app
@@ -70,6 +70,7 @@ export class Server {
         // game they were in, so a dropped connection cannot stall it forever.
         const disconnectTimeout = 1000 * 60;
         this.messenger.onDisconnect = (token: string) => {
+            this.gameQueue.removePrivateGamesFor(token);
             const account = this.accounts.get(token);
             if (!account || !account.gameId) {
                 return;

@@ -7,7 +7,12 @@ import { getToken } from "./tokens";
 
 export class MatchQueue {
     private playerQueue = new Set<string>();
-    private privateGames = new Map<string, string>();
+    // Private games expire so abandoned lobbies cannot leak memory
+    private static privateGameExpiry = 1000 * 60 * 60;
+    private privateGames = new Map<
+        string,
+        { host: string; created: number }
+    >();
 
     constructor(
         private server: Server,
@@ -43,8 +48,12 @@ export class MatchQueue {
             );
             return;
         }
+        this.pruneExpiredPrivateGames();
         const token = getToken(16);
-        this.privateGames.set(token, message.source);
+        this.privateGames.set(token, {
+            host: message.source,
+            created: Date.now()
+        });
         this.messenger.sendMessageTo(
             MessageType.PrivateGameReady,
             { gameId: token },
@@ -74,7 +83,8 @@ export class MatchQueue {
             return;
         }
         this.startGame(
-            this.privateGames.get(message.data.gameId) as string,
+            (this.privateGames.get(message.data.gameId) as { host: string })
+                .host,
             message.source
         );
         this.privateGames.delete(message.data.gameId);
@@ -118,6 +128,27 @@ export class MatchQueue {
         if (this.playerQueue.has(token)) { this.playerQueue.delete(token); }
     }
 
+    /**
+     * Removes every private game hosted by the given player - used when a
+     * client disconnects so abandoned lobbies do not linger in memory.
+     */
+    public removePrivateGamesFor(token: string) {
+        for (const [id, game] of this.privateGames) {
+            if (game.host === token) {
+                this.privateGames.delete(id);
+            }
+        }
+    }
+
+    private pruneExpiredPrivateGames() {
+        const now = Date.now();
+        for (const [id, game] of this.privateGames) {
+            if (now - game.created > MatchQueue.privateGameExpiry) {
+                this.privateGames.delete(id);
+            }
+        }
+    }
+
     private searchQueue(playerToken: string) {
         let found = false;
         let other;
@@ -139,6 +170,7 @@ export class MatchQueue {
                 ErrorType.AuthError,
                 tsrv("Not logged in.")
             );
+            return;
         }
         const playerToken: string = message.source;
         if (this.playerQueue.has(playerToken)) {

@@ -70,6 +70,7 @@ export class FirebaseSignalingService implements ISignalingService {
     }
 
     private listening = false;
+    private unsubscribeSignals: (() => void) | null = null;
 
     private listenForSignals() {
         if (!this.sessionRef || this.listening) return;
@@ -81,7 +82,8 @@ export class FirebaseSignalingService implements ISignalingService {
 
         console.log('Listening for signals at', targetPath);
 
-        onChildAdded(signalsRef, (snapshot) => {
+        // Keep the unsubscribe handle so disconnect() can detach the listener
+        this.unsubscribeSignals = onChildAdded(signalsRef, (snapshot) => {
             const val = snapshot.val();
             if (val) {
                 this.incomingSignalSubject.next(val);
@@ -103,10 +105,17 @@ export class FirebaseSignalingService implements ISignalingService {
     }
 
     disconnect(): void {
+        // Detach the signal listener so repeated P2P sessions do not leak them
+        if (this.unsubscribeSignals) {
+            this.unsubscribeSignals();
+            this.unsubscribeSignals = null;
+        }
+        this.listening = false;
         if (this.sessionRef && this.myRole === 'host') {
             // Clean up session if host
             remove(this.sessionRef);
         }
         this.sessionRef = null;
+        this.incomingSignalSubject.complete();
     }
 }

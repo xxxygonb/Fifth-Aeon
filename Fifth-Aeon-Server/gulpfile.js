@@ -18,7 +18,9 @@ const assets = () => {
     return gulp.src(JSON_FILES).pipe(gulp.dest("dist"));
 };
 
-const defaultTasks = gulp.series(watchSrc, assets);
+// Build everything first, then watch; assets must run before the
+// never-ending watch task or they would never run at all.
+const defaultTasks = gulp.series(scripts, assets, watchSrc);
 
 exports.scripts = scripts;
 exports.watch = watchSrc;

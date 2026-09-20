@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { ISignalingService, SignalMessage } from './signaling/signaling-service';
 import { P2PTransport } from '../p2p-transport';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 
 import * as SimplePeer from 'simple-peer';
 
@@ -10,12 +10,15 @@ export class P2PClient implements P2PTransport {
     private peer: SimplePeer.Instance | null = null;
     private connectedSubject = new Subject<boolean>();
     private dataSubject = new Subject<any>();
+    private signalSubscription: Subscription;
 
     public connected$ = this.connectedSubject.asObservable();
     public data$ = this.dataSubject.asObservable();
 
     constructor(private signaling: ISignalingService) {
-        this.signaling.onSignal().subscribe(signal => this.handleSignal(signal));
+        this.signalSubscription = this.signaling
+            .onSignal()
+            .subscribe(signal => this.handleSignal(signal));
     }
 
     public initiate(initiator: boolean) {
@@ -84,6 +87,10 @@ export class P2PClient implements P2PTransport {
     }
 
     public destroy() {
+        // Tear down the signaling listener/session too, otherwise every
+        // finished P2P game leaks its Firebase listeners.
+        this.signalSubscription.unsubscribe();
+        this.signaling.disconnect();
         if (this.peer) {
             this.peer.destroy();
             this.peer = null;
