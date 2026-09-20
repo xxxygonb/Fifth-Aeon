@@ -1,0 +1,52 @@
+.instructions {
+    font-size: 2em;
+}
+
+.mp-bar {
+    width: 40%;
+    margin: 0 auto;
+}
+
+h2 {
+    display: inline;
+}
+
+// header hight = 64px
+// Card heigh = 168px
+// calc((100vh - 64px - (168px * 3))/5)
+$vertical-marign: 2vh;
+.lobby-card {
+    margin: 0 auto;
+    max-width: 600px;
+    margin-top: $vertical-marign;
+    margin-bottom: $vertical-marign;
+}
+
+button {
+    margin: 20px;
+}
+
+mat-progress-spinner {
+    margin: 0 auto;
+}
+
+.lobby {
+    width: 100%;
+    text-align: center;
+}
+
+a {
+    text-decoration: none;
+}
+
+mat-radio-button {
+    margin: 5px;
+}
+
+.toolbar-icon {
+    padding: 0 14px;
+}
+
+.toolbar-spacer {
+    flex: 1 1 auto;
+}

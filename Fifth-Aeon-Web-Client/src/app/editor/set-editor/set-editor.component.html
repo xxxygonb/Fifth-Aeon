@@ -1,0 +1,61 @@
+<div class="card-grid">
+    <mat-card *ngFor="let set of editorData.getSets()" class="item-card">
+        <mat-card-content>
+            <form>
+                <mat-form-field class="editor-component">
+                    <input
+                        matInput
+                        name="setName"
+                        placeholder="{{ 'Set Name' | tr }}"
+                        [(ngModel)]="set.name"
+                    />
+                </mat-form-field>
+
+                <mat-form-field class="editor-component">
+                    <textarea
+                        rows="4"
+                        matInput
+                        name="setDescription"
+                        placeholder="{{ 'Set Description' | tr }}"
+                        [(ngModel)]="set.description"
+                    ></textarea>
+                </mat-form-field>
+
+                <mat-slide-toggle
+                    [checked]="set.public"
+                    (change)="changePublicity(set, $event)"
+                    >{{ 'Public' | tr }}</mat-slide-toggle
+                >
+            </form>
+        </mat-card-content>
+        <mat-card-actions>
+            <button
+                mat-raised-button
+                color="primary"
+                [routerLink]="getChangeCardsLink(set)"
+            >
+                {{ 'Edit Cards' | tr }}
+            </button>
+            <button mat-raised-button color="warn" (click)="deleteSet(set)">
+                {{ 'Delete' | tr }}
+            </button>
+        </mat-card-actions>
+    </mat-card>
+</div>
+
+<button
+    mat-fab
+    class="primary-fab"
+    (click)="newSet()"
+    color="primary"
+    matTooltipPosition="above"
+    matTooltip="{{ 'New Set' | tr }}"
+>
+    <mat-icon>add</mat-icon>
+</button>
+
+<p class="empty-instruction" *ngIf="editorData.getSets().length === 0">
+    {{ 'Click the button in the bottom right to create a new set.' | tr }}
+</p>
+
+<div *ngIf="editorData.getSets().length === 0" class="wave-attention"></div>

@@ -1,0 +1,53 @@
+<div *ngIf="teams.isLoggedIn()">
+    <article *ngIf="teams.isInTeam()">
+        <p>{{ teamDescription() }}</p>
+        <h1>队伍成员</h1>
+        <p *ngFor="let teamMate of teams.getTeamData().teamMates">
+            {{ teamMate.name }} 是
+            {{ teamMate.isLeader ? '队长' : '队员' }}。
+        </p>
+        <p *ngIf="teams.getTeamData().isLeader">
+            你可以使用邀请码邀请更多队友：
+            <span
+                class="cb-span"
+                (click)="clipboardMessage()"
+                ngxClipboard
+                [cbContent]="teams.getTeamData().joinCode"
+                >{{ teams.getTeamData().joinCode }}</span
+            >（点击即可复制）
+        </p>
+        <h1>操作</h1>
+        <button
+            mat-raised-button
+            color="primary"
+            routerLink="/tournament/submit"
+        >
+            <mat-icon>add</mat-icon>
+            <span> 提交机器人 </span>
+        </button>
+
+        <button mat-raised-button color="warn" (click)="exitAction()">
+            <mat-icon>delete</mat-icon>
+            <span> {{ exitText() }} </span>
+        </button>
+    </article>
+
+    <div *ngIf="!teams.isInTeam()">
+        <p>你还没有加入队伍。</p>
+
+        <ccg-new-team></ccg-new-team>
+
+        <p>
+            或者
+
+            <button mat-raised-button color="primary" (click)="promptAndJoin()">
+                <mat-icon>share</mat-icon>
+                <span> 加入已有队伍 </span>
+            </button>
+        </p>
+    </div>
+</div>
+
+<article *ngIf="!teams.isLoggedIn()">
+    <p>你需要先<a routerLink="/login">登录</a>，才能管理队伍。</p>
+</article>

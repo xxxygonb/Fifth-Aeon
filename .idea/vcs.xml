@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/Fifth-Aeon-Model" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Fifth-Aeon-Server" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Fifth-Aeon-Server/src/game_model" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Fifth-Aeon-Web-Client" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Fifth-Aeon-Web-Client/src/app/game_model" vcs="Git" />
+  </component>
+</project>

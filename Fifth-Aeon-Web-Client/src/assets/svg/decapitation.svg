@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 0 1000 560"
+   version="1.1"
+   id="svg21"
+   sodipodi:docname="decapitation.svg"
+   width="1000"
+   height="560"
+   inkscape:version="0.92.1 r15371"
+   inkscape:export-filename="C:\Users\William\Documents\Dev\Games\ccg\ccgclient\src\assets\png\decapitation.png"
+   inkscape:export-xdpi="240"
+   inkscape:export-ydpi="240">
+  <metadata
+     id="metadata25">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#15151b"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="1"
+     inkscape:pageshadow="2"
+     inkscape:window-width="3840"
+     inkscape:window-height="2004"
+     id="namedview23"
+     showgrid="true"
+     inkscape:zoom="1.3037281"
+     inkscape:cx="368.2287"
+     inkscape:cy="105.03102"
+     inkscape:window-x="-16"
+     inkscape:window-y="-16"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg21">
+    <inkscape:grid
+       type="xygrid"
+       id="grid4502" />
+  </sodipodi:namedview>
+  <defs
+     id="defs13">
+    <filter
+       id="shadow-1"
+       height="3"
+       width="3"
+       x="-1"
+       y="-1">
+      <feFlood
+         flood-color="#9013fe"
+         result="flood"
+         id="feFlood2" />
+      <feComposite
+         in="flood"
+         in2="SourceGraphic"
+         operator="atop"
+         result="composite"
+         id="feComposite4" />
+      <feGaussianBlur
+         in="composite"
+         stdDeviation="15"
+         result="blur"
+         id="feGaussianBlur6" />
+      <feOffset
+         result="offset"
+         id="feOffset8" />
+      <feComposite
+         in="SourceGraphic"
+         in2="offset"
+         operator="over"
+         id="feComposite10" />
+    </filter>
+  </defs>
+  <g
+     class=""
+     transform="matrix(1.1178258,0,0,1.1178258,186.20813,10.087829)"
+     id="g19">
+    <path
+       d="m 316.938,18.406 c -16.917,0.16 -35.992,8.394 -51.344,23.813 -25.855,25.966 -31.416,62.47 -12.438,81.53 18.978,19.06 55.332,13.468 81.188,-12.5 C 360.2,85.282 365.76,48.78 346.78,29.72 339.07,21.975 328.512,18.298 316.938,18.406 Z M 26.125,33.344 c 41.975,60.496 108.395,103.37 178.063,130.53 0.768,0.296 1.542,0.584 2.312,0.876 74.676,28.292 158.988,40.7 228.22,31.875 0.072,-0.013 0.144,-0.018 0.217,-0.03 73.4,-13.258 89.237,-60.577 -38.562,-134.25 163.392,147.973 -242.187,125.144 -370.25,-29 z M 220.28,189.688 c -3.947,2.137 -7.548,4.605 -10.874,7.375 -12.204,10.163 -20.78,24.71 -26.75,42.187 -10.988,32.16 -12.56,73.362 -13.375,109.563 h 40.064 l 0.625,8.656 10.218,136.467 h 86.687 l 9.03,-136.406 0.595,-8.717 h 38.53 c 1.694,-40.387 -0.062,-81.073 -12.25,-111.594 -3.295,-8.256 -7.23,-15.796 -12,-22.5 -36.92,-4.4 -74.495,-12.92 -110.5,-25.032 z"
+       id="path17"
+       inkscape:connector-curvature="0"
+       style="fill:#9013fe;filter:url(#shadow-1)" />
+  </g>
+  <!-- react-empty: 13 -->
+</svg>

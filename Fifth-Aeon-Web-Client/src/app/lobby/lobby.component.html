@@ -1,0 +1,109 @@
+<div class="lobby">
+    <mat-toolbar color="primary">
+        <span>Fifth Aeon</span> <span class="toolbar-spacer"></span>
+
+        <mat-icon class="toolbar-icon" [matTooltip]="'Turn volume on' | tr" (click)="soundManager.toggleMute()"
+            *ngIf="soundManager.isMuted()">volume_mute</mat-icon>
+        <mat-icon class="toolbar-icon" [matTooltip]="'Turn volume off' | tr" (click)="soundManager.toggleMute()"
+            *ngIf="!soundManager.isMuted()">volume_up</mat-icon>
+
+        <mat-icon class="toolbar-icon" [matTooltip]="'Connected' | tr" *ngIf="client.isConnected()">cloud</mat-icon>
+        <mat-icon class="toolbar-icon" [matTooltip]="'Disconnected' | tr" *ngIf="!client.isConnected()">cloud_off</mat-icon>
+    </mat-toolbar>
+
+    <ng-template [ngIf]="inLobby()">
+        <mat-card class="lobby-card">
+            <mat-card-title>{{ 'Singleplayer' | tr }}</mat-card-title>
+            <button mat-raised-button color="primary" (click)="client.selectDeckAndStartGame(0)">
+                <mat-icon>android</mat-icon>
+                <span> {{ 'Play vs A.I' | tr }} </span>
+            </button>
+            <button mat-raised-button color="primary" routerLink="/draft">
+                <mat-icon svgIcon="ccg:deck"></mat-icon>
+                <span> {{ 'Limited vs A.I' | tr }} </span>
+            </button>
+            <button routerLink="/packs" mat-raised-button color="primary">
+                <mat-icon>grade</mat-icon>
+                <span> {{ 'Open Packs' | tr }} </span>
+            </button>
+
+            <button mat-raised-button color="primary" *ngIf="client.isConnectedToLocalServer()"
+                (click)="client.selectDeckAndStartGame(3)">
+                <mat-icon>android</mat-icon>
+                <span> {{ 'Play Local Server A.I' | tr }} </span>
+            </button>
+        </mat-card>
+
+        <mat-card class="lobby-card">
+            <mat-card-title>{{ 'Multiplayer' | tr }}</mat-card-title>
+
+            <!-- Public Queue (Requires Server Connection) -->
+            <ng-template [ngIf]="client.isConnected()">
+                <button mat-raised-button color="primary" (click)="client.selectDeckAndStartGame(2)">
+                    <mat-icon>public</mat-icon> {{ 'Public Game' | tr }}
+                </button>
+            </ng-template>
+
+            <ng-template [ngIf]="!client.isConnected() && !isServerless()">
+                <span class="offline-msg">{{ 'Offline (Public Queue Unavailable)' | tr }}</span>
+            </ng-template>
+
+            <!-- P2P Game (Always Available) -->
+            <button mat-raised-button color="primary" (click)="openP2PDialog()">
+                <mat-icon>link</mat-icon> {{ 'P2P Game' | tr }}
+            </button>
+
+        </mat-card>
+
+        <mat-card class="lobby-card">
+            <mat-card-title>{{ 'Modding' | tr }}</mat-card-title>
+
+            <button routerLink="/editor" mat-raised-button color="primary">
+                <mat-icon>mode_edit</mat-icon>
+                <span> {{ 'Card Editor' | tr }} </span>
+            </button>
+
+            <button routerLink="/editor/selectMods" mat-raised-button color="primary">
+                <mat-icon>import_export</mat-icon>
+                <span> {{ 'Import Sets' | tr }} </span>
+            </button>
+        </mat-card>
+
+        <mat-card class="lobby-card">
+            <mat-card-title>{{ 'Other' | tr }}</mat-card-title>
+            <button mat-raised-button color="primary" (click)="client.openSettings()">
+                <mat-icon>settings</mat-icon>
+                <span> {{ 'Settings' | tr }}</span>
+            </button>
+
+            <a href="https://github.com/Fifth-Aeon/Fifth-Aeon-Wiki/wiki" target="_blank">
+                <button mat-raised-button color="primary">
+                    <mat-icon>help</mat-icon>
+                    <span> {{ 'Help' | tr }} </span>
+                </button>
+            </a>
+
+
+
+            <button routerLink="/upgradeAccount" *ngIf="user.role === 'guest'" mat-raised-button color="primary">
+                <mat-icon>vertical_align_top</mat-icon>
+                <span> {{ 'Upgrade to Full Account' | tr }} </span>
+            </button>
+
+            <button routerLink="/admin" *ngIf="user.role === 'admin'" mat-raised-button color="primary">
+                <mat-icon>adb</mat-icon>
+                <span> {{ 'Admin Panel' | tr }} </span>
+            </button>
+
+            <button mat-raised-button (click)="auth.logout()" color="primary">
+                <mat-icon>cancel</mat-icon>
+                <span> {{ 'Logout' | tr }}</span>
+            </button>
+        </mat-card>
+    </ng-template>
+
+    <ng-template [ngIf]="!inLobby()">
+        <p class="instructions">{{ 'In Queue. Waiting for an opponent.' | tr }}</p>
+        <mat-progress-spinner attr.color="primary" mode="indeterminate"></mat-progress-spinner>
+    </ng-template>
+</div>

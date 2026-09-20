@@ -1,0 +1,22 @@
+<h1 mat-dialog-title>{{ 'Daily Rewards' | tr }}</h1>
+
+<div mat-dialog-content>
+    <p *ngIf="rewards.length > 0">
+        {{
+            'Enjoy this free daily card. You can get another one after 24 hours.'
+                | tr
+        }}
+    </p>
+    <ccg-card
+        scale="1.9"
+        *ngFor="let reward of rewards"
+        noTranslate="true"
+        [card]="reward"
+    ></ccg-card>
+    <p *ngIf="rewards.length == 0">
+        {{
+            'Check back in {n} hours for a new daily reward.'
+                | tr: { n: (nextRewardTime | number: '1.0-1') }
+        }}
+    </p>
+</div>

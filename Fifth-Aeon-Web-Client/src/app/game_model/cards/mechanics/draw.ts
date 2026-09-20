@@ -1,0 +1,152 @@
+import { ChoiceHeuristic } from '../../ai/heuristics';
+import { Card } from '../../card-types/card';
+import { Game } from '../../game';
+import { Mechanic, TriggeredMechanic } from '../../mechanic';
+import { Player } from '../../player';
+import { Unit, UnitType } from '../../card-types/unit';
+import { ParameterType } from '../parameters';
+import { ResourceType } from '../../resource';
+import { t, tf } from '../../i18n';
+
+export class DrawCard extends TriggeredMechanic {
+    protected static id = 'DrawCard';
+    protected static ParameterTypes = [
+        { name: 'Number', type: ParameterType.NaturalNumber }
+    ];
+
+    constructor(private count: number = 1) {
+        super();
+    }
+
+    public onTrigger(card: Card, game: Game) {
+        game.getPlayer(card.getOwner()).drawCards(this.count);
+    }
+
+    public getText(card: Card) {
+        if (this.count === 1) {
+            return t('Draw a card.');
+        }
+        return tf('Draw {n} cards.', { n: this.count });
+    }
+
+    public evaluateEffect() {
+        return this.count * 3;
+    }
+}
+
+export class Peek extends TriggeredMechanic {
+    protected static id = 'Peek';
+
+    public onTrigger(card: Card, game: Game) {
+        game.queryCards(
+            (queried: Game) =>
+                queried
+                    .getPlayer(queried.getOtherPlayerNumber(card.getOwner()))
+                    .getHand(),
+            hand => {
+                game.promptCardChoice(
+                    card.getOwner(),
+                    hand,
+                    0,
+                    0,
+                    null,
+                    '',
+                    ChoiceHeuristic.DrawHeuristic
+                );
+            }
+        );
+    }
+
+    public getText(card: Card) {
+        return t('Peek at your opponents hand.');
+    }
+
+    public evaluateEffect() {
+        return 0;
+    }
+}
+
+export class Discard extends TriggeredMechanic {
+    protected static id = 'Discard';
+    protected static ParameterTypes = [
+        { name: 'Number', type: ParameterType.NaturalNumber }
+    ];
+
+    constructor(private count: number = 1) {
+        super();
+    }
+    public onTrigger(card: Card, game: Game) {
+        const target = game.getPlayer(
+            game.getOtherPlayerNumber(card.getOwner())
+        );
+        target.discard(game, this.count);
+    }
+
+    public getText(card: Card) {
+        if (this.count === 1) {
+            return t('Your opponent discards a card.');
+        }
+        return tf('Your opponent discards {n} cards.', { n: this.count });
+    }
+
+    public evaluateEffect() {
+        return this.count * 2.5;
+    }
+}
+
+export class DiscardOnDamage extends Mechanic {
+    protected static id = 'DiscardOnDamage';
+
+    public enter(card: Card, game: Game) {
+        (card as Unit).getEvents().dealDamage.addEvent(this, params => {
+            const target = params.target;
+            if (target.getUnitType() === UnitType.Player) {
+                game.getPlayer((target as Player).getPlayerNumber()).discard(
+                    game
+                );
+            }
+            return params;
+        });
+    }
+
+    public remove(card: Card, game: Game) {
+        (card as Unit).getEvents().removeEvents(this);
+    }
+
+    public getText(card: Card) {
+        return t(
+            'Whenever this damages a player, that player discards a card.'
+        );
+    }
+
+    public evaluate() {
+        return 3;
+    }
+}
+
+export class AugarCard extends TriggeredMechanic {
+    protected static id = 'AugarCard';
+
+    public onTrigger(card: Card, game: Game) {
+        const owner = game.getPlayer(card.getOwner());
+        const synth = owner.getPool().getOfType(ResourceType.Synthesis);
+
+        if (synth < 4) {
+            owner.replace(game, 0, 1);
+        } else if (synth < 8) {
+            owner.drawCard();
+        } else {
+            owner.searchForCard(game, 1);
+        }
+    }
+
+    public getText(card: Card) {
+        return t(
+            'If you have less than 4 synthesis, replace a card. If you have less than 8 draw one. Otherwise search for one.'
+        );
+    }
+
+    public evaluateEffect() {
+        return 2;
+    }
+}

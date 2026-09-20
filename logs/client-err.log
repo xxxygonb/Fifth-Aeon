@@ -1,0 +1,44 @@
+****************************************************************************************
+This is a simple server for use in testing or debugging Angular applications locally.
+It hasn't been reviewed for security issues.
+
+DON'T USE IT FOR PRODUCTION!
+****************************************************************************************
+- Generating browser application bundles (phase: setup)...
+√ Browser application bundle generation complete.
+
+Warning: G:/Fifth-Aeon/Fifth-Aeon-Web-Client/src/app/game_model/scenarios/tutorial.ts is part of the TypeScript compilation but it's unused.
+Add only entry points to the 'files' or 'include' properties in your tsconfig.
+
+Warning: G:/Fifth-Aeon/Fifth-Aeon-Web-Client/src/app/message.ts is part of the TypeScript compilation but it's unused.
+Add only entry points to the 'files' or 'include' properties in your tsconfig.
+
+Warning: G:/Fifth-Aeon/Fifth-Aeon-Web-Client/src/app/p2p/p2p-network-adapter.ts is part of the TypeScript compilation but it's unused.
+Add only entry points to the 'files' or 'include' properties in your tsconfig.
+
+Warning: G:/Fifth-Aeon/Fifth-Aeon-Web-Client/src/environments/environment.prod.ts is part of the TypeScript compilation but it's unused.
+Add only entry points to the 'files' or 'include' properties in your tsconfig.
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\node_modules\angular2-hotkeys\fesm2020\angular2-hotkeys.mjs depends on 'mousetrap'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app\editor\editor-data.service.ts depends on 'uuid'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app\gameManager.ts depends on 'lodash'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app\p2p\p2p-client.ts depends on 'simple-peer'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app\sound.ts depends on 'howler'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app\sound.ts depends on 'typescript-collections'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+Warning: G:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app\tournament\teams.service.ts depends on 'file-saver'. CommonJS or AMD dependencies can cause optimization bailouts.
+For more info see: https://angular.io/guide/build#configuring-commonjs-dependencies
+
+
+^C

@@ -1,0 +1,22 @@
+<h1 mat-dialog-title>{{ 'Select Damage Order' | tr }}</h1>
+
+<div mat-dialog-actions>
+    <ccg-card scale="1.45" [card]="attacker" noTranslate="true"></ccg-card>
+    <div
+        cdkDropList
+        class="sortable"
+        (cdkDropListDropped)="orderChanged($event)"
+    >
+        <div class="card-wrapper" cdkDrag *ngFor="let defender of defenders">
+            <ccg-card
+                scale="1.45"
+                [card]="defender"
+                noTranslate="true"
+            ></ccg-card>
+        </div>
+    </div>
+</div>
+
+<div mat-dialog-actions>
+    <button mat-raised-button (click)="done()">{{ 'Done' | tr }}</button>
+</div>

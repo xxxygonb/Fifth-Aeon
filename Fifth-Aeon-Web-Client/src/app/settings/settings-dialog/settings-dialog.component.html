@@ -1,0 +1,111 @@
+<div class="settings">
+    <div mat-dialog-content>
+        <mat-tab-group>
+            <mat-tab [label]="'Language' | tr">
+                <div class="settings-content">
+                    <mat-form-field class="settings-element">
+                        <mat-label>{{ 'Language' | tr }}</mat-label>
+                        <mat-select
+                            [value]="i18n.getLang()"
+                            (selectionChange)="changeLanguage($event.value)">
+                            <mat-option value="zh-CN">简体中文</mat-option>
+                            <mat-option value="en-US">English</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </mat-tab>
+            <mat-tab [label]="'Navigation' | tr" *ngIf="isInGame()">
+                <button class="settings-element" mat-raised-button color="primary" mat-button (click)="concede()"
+                    mat-dialog-close="done">
+                    {{ 'Concede Game' | tr }}
+                </button>
+            </mat-tab>
+            <mat-tab [label]="'Network' | tr">
+                <div class="settings-content">
+                    <mat-slide-toggle class="settings-element" (change)="settings.setOffline($event.checked)"
+                        [checked]="settings.isOffline()">{{ 'Offline Mode' | tr }}</mat-slide-toggle>
+                </div>
+            </mat-tab>
+            <mat-tab [label]="'Volume' | tr">
+                <table>
+                    <tbody *ngFor="let volume of volumes; let i = index">
+                        <tr>
+                            <td>{{ volumeNames[volume[0]] | tr }}:</td>
+                            <td>
+                                <mat-slider (change)="
+                                        sound.changeVolume(
+                                            volume[0],
+                                            $event.value
+                                        )
+                                    " min="0" max="1" step="0.01" [value]="volume[1]"></mat-slider>
+                            </td>
+                            <td *ngIf="i === 0">
+                                <mat-checkbox (change)="sound.toggleMute()" [ngModel]="sound.isMuted()">{{
+                                    'Mute all' | tr }}
+                                </mat-checkbox>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </mat-tab>
+            <mat-tab [label]="'A.I. Settings' | tr">
+                <mat-card class="small-card">
+                    <mat-card-header>
+                        <mat-card-title>{{ 'Difficultly' | tr }}</mat-card-title>
+                    </mat-card-header>
+                    <mat-card-content>
+                        <mat-radio-group class="radio-group" [ngModel]="ai.getSelectedDifficulty()"
+                            (change)="ai.setDifficulty($event.value)">
+                            <mat-radio-button class="radio-button" *ngFor="let name of difficultyNames"
+                                [value]="difficultyLevels[name]">
+                                {{ name | tr }}
+                            </mat-radio-button>
+                        </mat-radio-group>
+                    </mat-card-content>
+                </mat-card>
+
+                <mat-card class="small-card">
+                    <mat-card-header>
+                        <mat-card-title>{{ 'Speed' | tr }}</mat-card-title>
+                    </mat-card-header>
+                    <mat-card-content>
+                        <mat-radio-group class="radio-group" [ngModel]="speed.multiplier"
+                            (change)="speed.setMultiplier($event.value)">
+                            <mat-radio-button class="radio-button" *ngFor="let speedName of speedNames"
+                                [value]="speedSettings[speedName]">
+                                {{ speedName | tr }}
+                            </mat-radio-button>
+                        </mat-radio-group>
+                    </mat-card-content>
+                </mat-card>
+
+                <mat-divider [vertical]="true"></mat-divider>
+            </mat-tab>
+            <mat-tab [label]="'Tips' | tr">
+                <mat-slide-toggle class="settings-element " (change)="toggleTips()" [checked]="!tips.isDisabled()">{{
+                    tipMessage() }}</mat-slide-toggle>
+                <button class="settings-element" mat-raised-button color="primary" mat-button
+                    (click)="tips.markUnread()">
+                    {{ 'Mark All Tips as Unread' | tr }}
+                </button>
+                <button class="settings-element " mat-raised-button color="warn" mat-button (click)="tips.markRead()">
+                    {{ 'Mark All Tips as Read' | tr }}
+                </button>
+            </mat-tab>
+            <mat-tab [label]="'Dev' | tr">
+                <button class="settings-element" mat-raised-button color="primary" mat-button
+                    (click)="collection.unlockAll()">
+                    {{ 'Unlock Cards' | tr }}
+                </button>
+            </mat-tab>
+        </mat-tab-group>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div mat-dialog-actions>
+        <button mat-raised-button mat-button mat-dialog-close="done">
+            {{ 'Done' | tr }}
+        </button>
+    </div>
+</div>

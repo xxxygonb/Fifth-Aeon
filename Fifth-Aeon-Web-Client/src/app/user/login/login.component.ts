@@ -1,0 +1,114 @@
+import { Component, OnInit } from '@angular/core';
+import { FormControl, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { AuthenticationService } from '../authentication.service';
+import { Router } from '@angular/router';
+import { existenceValidator } from '../../existence.validator';
+import { I18nService } from 'app/i18n/i18n.service';
+
+@Component({
+    selector: 'ccg-login',
+    templateUrl: './login.component.html',
+    styleUrls: ['./login.component.scss']
+})
+export class LoginComponent implements OnInit {
+    nameControl: FormControl;
+    passwordControl: FormControl;
+    hide = true;
+
+    username = '';
+    password = '';
+    message = '';
+    working = false;
+
+    constructor(
+        private auth: AuthenticationService,
+        private router: Router,
+        http: HttpClient,
+        public i18n: I18nService
+    ) {
+        this.nameControl = new FormControl(
+            '',
+            [Validators.required],
+            [existenceValidator(http, 'emailorpassword', false, true)]
+        );
+        this.passwordControl = new FormControl('', [
+            Validators.required,
+            Validators.minLength(8)
+        ]);
+    }
+
+    startRequest() {
+        this.message = this.i18n.tr('Working..');
+        this.working = true;
+        this.nameControl.disable();
+        this.passwordControl.disable();
+    }
+
+    endRequest() {
+        this.working = false;
+        this.nameControl.enable();
+        this.passwordControl.enable();
+    }
+
+    handleError(err: any) {
+        console.error(err, err.error);
+        if (err.error) {
+            this.message = err.error.message || err.error;
+        } else {
+            this.message = err.status;
+        }
+        this.endRequest();
+    }
+
+    submit() {
+        this.startRequest();
+        this.auth
+            .login(this.username, this.password)
+            .then(() => {
+                this.auth.redirect();
+            })
+            .catch(this.handleError.bind(this));
+    }
+
+    reset() {
+        this.startRequest();
+        this.auth
+            .requestPasswordReset(this.username)
+            .then(() => {
+                alert(
+                    this.i18n.tr(
+                        'A password reset link has been sent to your email.'
+                    )
+                );
+                this.endRequest();
+            })
+            .catch(this.handleError.bind(this));
+    }
+
+    nameError() {
+        return this.nameControl.hasError('required')
+            ? this.i18n.tr('You must enter a value.')
+            : this.nameControl.hasError('availability')
+            ? this.i18n.tr('No account exists with that username or email.')
+            : '';
+    }
+
+    passwordError() {
+        return this.passwordControl.hasError('required')
+            ? this.i18n.tr('You must enter a value')
+            : this.passwordControl.hasError('minlength')
+            ? this.i18n.tr('Must be at least 8 characters long.')
+            : '';
+    }
+
+    ok() {
+        return this.nameControl.valid && this.passwordControl.valid;
+    }
+
+    canReset() {
+        return this.nameControl.valid;
+    }
+
+    ngOnInit() {}
+}

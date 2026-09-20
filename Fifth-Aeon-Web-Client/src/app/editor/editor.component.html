@@ -1,0 +1,38 @@
+<mat-toolbar color="primary">
+    <button mat-icon-button (click)="nav.toggle()">
+        <mat-icon>menu</mat-icon>
+    </button>
+    <span>{{ 'Fifth Aeon - Editor' | tr }}</span>
+    <span class="toolbar-spacer"></span>
+    <button mat-icon-button routerLink="/lobby">
+        <mat-icon>home</mat-icon>
+    </button>
+</mat-toolbar>
+
+<mat-sidenav-container>
+    <mat-sidenav #nav mode="side" class="editor-sidenav">
+        <ul>
+            <li>
+                <a (click)="nav.close()" routerLink="/editor">{{
+                    'Card List' | tr
+                }}</a>
+            </li>
+            <li>
+                <a (click)="nav.close()" routerLink="/editor/sets">{{
+                    'Set List' | tr
+                }}</a>
+            </li>
+            <li>
+                <a (click)="nav.close()" routerLink="/editor/selectMods">{{
+                    'Activate Sets' | tr
+                }}</a>
+            </li>
+            <li>
+                <a (click)="nav.close()" routerLink="/lobby">{{
+                    'Lobby' | tr
+                }}</a>
+            </li>
+        </ul>
+    </mat-sidenav>
+    <router-outlet></router-outlet>
+</mat-sidenav-container>

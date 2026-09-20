@@ -1,0 +1,1 @@
+No Sendgrid API Key found in SENDGRID_API_KEY environment variable. Emails will not be sent.

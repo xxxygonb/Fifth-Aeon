@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   viewBox="0 0 1000 560"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="castle.svg"
+   width="1000"
+   height="560"
+   inkscape:version="0.92.1 r15371"
+   inkscape:export-filename="C:\Users\William\Documents\Dev\Games\ccg\ccgclient\src\assets\png\castle.png"
+   inkscape:export-xdpi="240"
+   inkscape:export-ydpi="240">
+  <metadata
+     id="metadata14">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs12" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="3840"
+     inkscape:window-height="2004"
+     id="namedview10"
+     showgrid="true"
+     inkscape:zoom="0.921875"
+     inkscape:cx="424.09951"
+     inkscape:cy="259.20039"
+     inkscape:window-x="-16"
+     inkscape:window-y="-16"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg8">
+    <inkscape:grid
+       type="xygrid"
+       id="grid4491" />
+  </sodipodi:namedview>
+  <path
+     d="M 0,0 H 1000 V 560 H 0 Z"
+     id="path2"
+     inkscape:connector-curvature="0"
+     style="fill:#f8e71c;stroke-width:1.46158493" />
+  <g
+     class=""
+     id="g6"
+     transform="matrix(1.2163855,0,0,1.2163855,175.62024,-27.539502)">
+    <path
+       d="m 255.95,27.11 -75.35,80.504 150.7,1.168 -75.35,-81.674 h -0.003 z M 25,109.895 v 68.01 l 19.412,25.99 h 71.06 l 19.528,-26 v -68 H 121 V 125.89 H 103 V 109.896 H 89 v 15.995 H 71 V 109.897 H 57 v 15.995 H 39 V 109.898 H 25 Z m 352,0 v 68 l 19.527,26 h 71.06 L 487,177.906 v -68.01 h -14 v 15.995 h -18 v -15.994 h -14 v 15.995 h -18 v -15.994 h -14 v 15.995 H 391 V 109.899 H 377 Z M 201,125.772 V 260.89 H 311 V 126.63 l -110,-0.857 z m 55,20.118 c 8,0 16,4 16,12 v 32 h -32 v -32 c 0,-8 8,-12 16,-12 z M 41,221.897 V 484.89 h 78 V 221.897 Z m 352,0 V 484.89 h 78 V 221.897 Z M 56,241.89 c 4,0 8,4 8,12 v 32 H 48 v -32 c 0,-8 4,-12 8,-12 z m 400,0 c 4,0 8,4 8,12 v 32 h -16 v -32 c 0,-8 4,-12 8,-12 z m -303,37 v 23 h -16 v 183 h 87 v -55 c 0,-24 16,-36 32,-36 16,0 32,12 32,36 v 55 h 87 v -183 h -16 v -23 h -14 v 23 h -18 v -23 h -14 v 23 h -18 v -23 h -14 v 23 h -18 v -23 h -14 v 23 h -18 v -23 h -14 v 23 h -18 v -23 h -14 v 23 h -18 v -23 z m -49,43 c 4,0 8,4 8,12 v 32 H 96 v -32 c 0,-8 4,-12 8,-12 z m 72,0 c 8,0 16,4 16,12 v 32 h -32 v -32 c 0,-8 8,-12 16,-12 z m 80,0 c 8,0 16,4 16,12 v 32 h -32 v -32 c 0,-8 8,-12 16,-12 z m 80,0 c 8,0 16,4 16,12 v 32 h -32 v -32 c 0,-8 8,-12 16,-12 z m 72,0 c 4,0 8,4 8,12 v 32 h -16 v -32 c 0,-8 4,-12 8,-12 z m -352,64 c 4,0 8,4 8,12 v 32 H 48 v -32 c 0,-8 4,-12 8,-12 z m 400,0 c 4,0 8,4 8,12 v 32 h -16 v -32 c 0,-8 4,-12 8,-12 z"
+       id="path4"
+       inkscape:connector-curvature="0"
+       style="fill:#131210" />
+  </g>
+  <!-- react-empty: 6 -->
+</svg>

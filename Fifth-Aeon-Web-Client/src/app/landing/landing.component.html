@@ -1,0 +1,42 @@
+<h1>Fifth Aeon</h1>
+<h2>{{ 'A Collectable Card Game' | tr }}</h2>
+
+<ng-template [ngIf]="state === states.WaitingForAction">
+    <button mat-raised-button color="primary" (click)="newPlayer()">
+        {{ 'New Player' | tr }}
+    </button>
+    <button mat-raised-button color="primary" routerLink="/login">
+        {{ 'Returning Player' | tr }}
+    </button>
+    <br>
+    <button mat-raised-button class="offline-button" (click)="enterOfflineMode()">
+        {{ 'Play Offline' | tr }}
+    </button>
+</ng-template>
+
+<ng-template [ngIf]="state === states.NewPlayer">
+    <button mat-raised-button color="primary" (click)="createGuestAccount()">
+        {{ 'Play as Guest' | tr }}
+    </button>
+    <button mat-raised-button color="primary" routerLink="/register">
+        {{ 'Create Account' | tr }}
+    </button>
+</ng-template>
+
+<ng-template [ngIf]="state === states.Working">
+    <mat-progress-spinner class="mp-bar" color="primary" mode="indeterminate"></mat-progress-spinner>
+</ng-template>
+
+<ng-template [ngIf]="state === states.OfflineOnly">
+    <p>{{ 'Server Unavailable' | tr }}</p>
+    <button mat-raised-button class="offline-button" (click)="enterOfflineMode()">
+        {{ 'Play Offline' | tr }}
+    </button>
+</ng-template>
+
+<ng-template [ngIf]="state === states.Serverless">
+    <p>{{ 'Welcome to Fifth Aeon' | tr }}</p>
+    <button mat-raised-button class="mp-bar" color="primary" (click)="enterOfflineMode()">
+        {{ 'Play Now' | tr }}
+    </button>
+</ng-template>

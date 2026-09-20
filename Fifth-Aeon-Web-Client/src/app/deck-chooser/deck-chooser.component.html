@@ -1,0 +1,66 @@
+<h1>{{ 'Choose a deck' | tr }}</h1>
+
+<div class="deck-zone">
+    <mat-card
+        *ngFor="let deck of decksService.getDecks(); let i = index"
+        class="deck-card"
+    >
+        <mat-card-header>
+            <mat-card-title>{{ deck.name | tr }}</mat-card-title>
+        </mat-card-header>
+        <img
+            (click)="decksService.setCurrentDeck(i)"
+            mat-card-image
+            src="assets/png/{{ deck.avatar }}"
+        />
+        <mat-card-actions>
+            <button
+                mat-mini-fab
+                (click)="decksService.setCurrentDeck(i)"
+                color="primary"
+                matTooltipPosition="above"
+                [matTooltip]="'Select Deck' | tr"
+            >
+                <mat-icon>check</mat-icon>
+            </button>
+            <button
+                mat-mini-fab
+                (click)="decksService.editDeck(i)"
+                matTooltipPosition="above"
+                [matTooltip]="'Edit Deck' | tr"
+            >
+                <mat-icon>mode_edit</mat-icon>
+            </button>
+            <button
+                mat-mini-fab
+                (click)="decksService.deleteDeck(i)"
+                color="warn"
+                matTooltipPosition="above"
+                [matTooltip]="'Delete Deck' | tr"
+            >
+                <mat-icon>delete</mat-icon>
+            </button>
+        </mat-card-actions>
+    </mat-card>
+</div>
+
+<button
+    mat-fab
+    class="new-button"
+    (click)="decksService.newDeck()"
+    color="primary"
+    matTooltipPosition="above"
+    [matTooltip]="'New Deck' | tr"
+>
+    <mat-icon>add</mat-icon>
+</button>
+<button
+    mat-fab
+    class="back-button"
+    (click)="decksService.cancelSelect()"
+    color="accent"
+    matTooltipPosition="above"
+    [matTooltip]="'Go Back' | tr"
+>
+    <mat-icon>undo</mat-icon>
+</button>

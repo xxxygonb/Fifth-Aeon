@@ -1,0 +1,55 @@
+<mat-card class="auth-form settings">
+    <mat-card-header>
+        <mat-card-title>{{ 'Initial Settings' | tr }}</mat-card-title>
+        <mat-card-subtitle
+            >{{
+            'Welcome to Fifth Aeon! Just a few settings before you start.'
+                | tr
+            }}</mat-card-subtitle
+        >
+    </mat-card-header>
+
+    <mat-card-content class="editor-container">
+        <div>
+            <mat-checkbox
+                (change)="sound.toggleMute()"
+                [ngModel]="!sound.isMuted()"
+                >{{ 'Sound Enabled' | tr }}</mat-checkbox
+            >
+        </div>
+        <div>
+            <mat-checkbox
+                (change)="tips.toggleDisable()"
+                [ngModel]="!tips.isDisabled()"
+                >{{ 'Tips Enabled' | tr }}</mat-checkbox
+            >
+        </div>
+        <div>
+            <mat-checkbox
+                (change)="toggleNarrator()"
+                [ngModel]="narratorEnabled"
+                >{{ 'Text To Speech Narrator Enabled' | tr }}</mat-checkbox
+            >
+        </div>
+        <p>
+            {{
+                'You can change these settings latter from the settings menu which can be opened with the ESCAPE key.'
+                    | tr
+            }}
+        </p>
+        <p>
+            {{
+                'For a full list of keyboard commands press the question mark key (?).'
+                    | tr
+            }}
+        </p>
+    </mat-card-content>
+    <mat-card-actions>
+        <button mat-raised-button mat-button (click)="exampleTip()">
+            {{ 'Play Example Tip' | tr }}
+        </button>
+        <button mat-raised-button mat-button routerLink="lobby" color="primary">
+            {{ 'Continue To Lobby' | tr }}
+        </button>
+    </mat-card-actions>
+</mat-card>

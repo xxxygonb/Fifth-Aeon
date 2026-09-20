@@ -1,0 +1,18 @@
+<h1 *ngIf="winner" mat-dialog-title>{{ 'You Won' | tr }}</h1>
+<h1 *ngIf="!winner" mat-dialog-title>{{ 'You Lost' | tr }}</h1>
+
+<div mat-dialog-content>
+    <div *ngIf="winner">
+        <p *ngIf="quit">{{ 'Your opponent left.' | tr }}</p>
+        <p *ngIf="!quit">{{ 'You reduced your oponents life to zero.' | tr }}</p>
+    </div>
+    <div *ngIf="!winner">
+        <p *ngIf="quit">{{ 'You left the game.' | tr }}</p>
+        <p *ngIf="!quit">{{ 'Your life was reduced to zero.' | tr }}</p>
+    </div>
+    <p>{{ this.rewards }}</p>
+</div>
+
+<div mat-dialog-actions>
+    <button mat-button mat-dialog-close="">{{ 'Back to lobby' | tr }}</button>
+</div>

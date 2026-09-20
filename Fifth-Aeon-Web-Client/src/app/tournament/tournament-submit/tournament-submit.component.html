@@ -1,0 +1,36 @@
+<article *ngIf="team.isLoggedIn()">
+    <h1 *ngIf="submissions.length > 0">历史提交</h1>
+    <p *ngFor="let submission of submissions">
+        {{ submission.submitter }} 于 {{ submission.submitted | date: 'short' }}
+        提交了一个版本
+        <button mat-icon-button (click)="team.downloadSubmission(submission)">
+            <mat-icon>file_download</mat-icon>
+        </button>
+    </p>
+
+    <h2>操作说明</h2>
+    <p>
+        在你的机器人工具包安装目录中，进入 src/bots
+        文件夹。复制一份该文件夹，并删除除队伍准备提交的机器人以外的所有机器人。将复制出的文件夹压缩为
+        .zip 压缩包，并在此处上传该压缩包。
+    </p>
+
+
+    <h1>提交你的机器人</h1>
+    <input
+        #fileInput
+        hidden
+        type="file"
+        (change)="fileChange($event)"
+        placeholder="上传机器人 zip 压缩包"
+        accept="application/zip,application/x-zip,application/x-zip-compressed"
+        single
+    />
+    <button type="button" mat-raised-button (click)="fileInput.click()">
+        <mat-icon>file_upload</mat-icon> 上传机器人版本
+    </button>
+</article>
+
+<article *ngIf="!team.isLoggedIn()">
+    <p>你需要先<a routerLink="/login">登录</a>，才能提交机器人。</p>
+</article>

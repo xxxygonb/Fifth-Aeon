@@ -1,0 +1,42 @@
+<h1>管理面板</h1>
+
+<h2>卡牌数据</h2>
+
+<p>
+    有 {{ cardCount }} 张自定义卡牌存于数据库中，其中
+    {{ publicCardCount }} 张已在公开系列中可用。
+</p>
+
+<button (click)="getUsersToPurge()">清理旧账号</button>
+
+<h2>用户数据</h2>
+<table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
+    <ng-container matColumnDef="username">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>用户名</th>
+        <td mat-cell *matCellDef="let element">{{ element.username }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="lastActive">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>最近活跃</th>
+        <td mat-cell *matCellDef="let element">
+            {{ element.lastActive | date }}
+        </td>
+    </ng-container>
+
+    <ng-container matColumnDef="joined">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>注册日期</th>
+        <td mat-cell *matCellDef="let element">
+            {{ element.joined | date }}
+        </td>
+    </ng-container>
+
+    <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>用户角色</th>
+        <td mat-cell *matCellDef="let element">
+            {{ element.role }}
+        </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+</table>
