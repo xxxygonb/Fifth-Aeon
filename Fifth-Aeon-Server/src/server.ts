@@ -66,6 +66,34 @@ export class Server {
             }
         };
 
+        // Give a disconnected player 60s to reconnect before ending the
+        // game they were in, so a dropped connection cannot stall it forever.
+        const disconnectTimeout = 1000 * 60;
+        this.messenger.onDisconnect = (token: string) => {
+            const account = this.accounts.get(token);
+            if (!account || !account.gameId) {
+                return;
+            }
+            const gameId = account.gameId;
+            setTimeout(() => {
+                const acc = this.accounts.get(token);
+                if (!acc || acc.gameId !== gameId) {
+                    return;
+                }
+                if (this.messenger.isConnected(token)) {
+                    return;
+                }
+                const game = this.games.get(gameId);
+                if (game) {
+                    console.log(
+                        "Player disconnected from game, ending it:",
+                        game.getName()
+                    );
+                    game.end();
+                }
+            }, disconnectTimeout);
+        };
+
         this.passMessagesToGames();
         setInterval(this.pruneAccounts.bind(this), cleaningTime);
     }

@@ -138,9 +138,16 @@ export class SoundManager {
     public loadSettings() {
         const settingData = localStorage.getItem(SoundManager.localStorageKey);
         if (settingData) {
-            const savedSettings: SoundSettings = JSON.parse(settingData);
-            this.muted = savedSettings.muted;
-            this.volume = savedSettings.volume;
+            try {
+                const savedSettings: SoundSettings = JSON.parse(settingData);
+                this.muted = savedSettings.muted;
+                this.volume = savedSettings.volume;
+            } catch (e) {
+                // Corrupted settings: fall back to defaults instead of
+                // crashing during service initialization
+                console.warn('Corrupt sound settings, using defaults', e);
+                localStorage.removeItem(SoundManager.localStorageKey);
+            }
         }
         this.global.mute(this.muted);
     }

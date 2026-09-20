@@ -19,6 +19,15 @@ export class ServerMessenger {
                 this.connections.set(msg.source, ws);
             });
             ws.on("error", err => console.error("client ws error", err));
+            ws.on("close", () => {
+                // Notify about every token that was bound to this socket
+                for (const [token, conn] of this.connections) {
+                    if (conn === ws) {
+                        this.connections.delete(token);
+                        this.onDisconnect(token);
+                    }
+                }
+            });
             this.makeMessageHandler(ws);
         });
         this.addHandler(MessageType.Connect, msg =>
@@ -33,6 +42,7 @@ export class ServerMessenger {
     private handlers = new Map<MessageType, (message: Message) => void>();
     private id = "server";
     public onMessage: (message: Message) => void = () => null;
+    public onDisconnect: (token: string) => void = () => null;
 
     private readMessage(data: any): Message | null {
         try {
@@ -103,11 +113,16 @@ export class ServerMessenger {
     }
 
     public deleteUser(token: string) {
-        if (!this.connections.has(token)) {
-            return;
-        }
         this.connections.delete(token);
         this.queues.delete(token);
+    }
+
+    /**
+     * Whether the client with this token currently has an open connection
+     */
+    public isConnected(token: string): boolean {
+        const ws = this.connections.get(token);
+        return !!ws && ws.readyState === ws.OPEN;
     }
 
     /**
@@ -120,6 +135,9 @@ export class ServerMessenger {
             return;
         }
         const ws = this.connections.get(token);
+        if (!ws || ws.readyState !== ws.OPEN) {
+            return;
+        }
         while (!queue.isEmpty()) {
             ws.send(queue.dequeue());
         }
@@ -156,7 +174,7 @@ export class ServerMessenger {
     ) {
         const ws = this.connections.get(target);
         const msg = this.makeMessage(messageType, data);
-        if (ws.readyState === ws.OPEN) {
+        if (ws && ws.readyState === ws.OPEN) {
             ws.send(msg);
         } else {
             const queue = this.queues.get(target);

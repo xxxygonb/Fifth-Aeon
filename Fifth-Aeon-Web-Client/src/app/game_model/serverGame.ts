@@ -103,7 +103,7 @@ export class ServerGame extends Game {
             return this.getActivePlayer();
         } else if (
             this.currentChoices[0] !== null &&
-            this.currentChoices[0] !== null
+            this.currentChoices[1] !== null
         ) {
             return ServerGame.rng.nextInt(0, 1);
         } else if (this.currentChoices[0] !== null) {

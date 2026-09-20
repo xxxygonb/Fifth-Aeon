@@ -29,7 +29,7 @@ export class GameServer {
     public handleAction(msg: Message) {
         const action: GameAction = msg.data;
         action.player = this.playerNum(msg.source);
-        if (action.player === undefined) {
+        if (action.player === undefined || action.player === -1) {
             console.error("Action without player", msg);
             return;
         }

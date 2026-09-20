@@ -146,7 +146,15 @@ export class TipService {
     ) {
         const storedData = localStorage.getItem(tipLocalStore);
         if (storedData) {
-            this.played = JSON.parse(storedData);
+            try {
+                this.played = JSON.parse(storedData);
+            } catch (e) {
+                // Corrupted tip store: reset it instead of crashing the
+                // service (and the whole app) during initialization
+                console.warn('Corrupt tip store, resetting', e);
+                localStorage.removeItem(tipLocalStore);
+                this.played = {};
+            }
         } else {
             this.played = {};
         }

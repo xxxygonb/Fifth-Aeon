@@ -47,3 +47,13 @@
 (node:18988) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 [[90m14:05:29[39m] Finished 'scripts' after 3.41 s
+[[90m15:14:57[39m] Using gulpfile G:\Fifth-Aeon\Fifth-Aeon-Server\gulpfile.js
+[[90m15:14:57[39m] Starting 'scripts'...
+(node:12860) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[[90m15:15:03[39m] Finished 'scripts' after 6.32 s
+[[90m16:03:36[39m] Using gulpfile G:\Fifth-Aeon\Fifth-Aeon-Server\gulpfile.js
+[[90m16:03:36[39m] Starting 'scripts'...
+(node:3268) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[[90m16:03:41[39m] Finished 'scripts' after 4.84 s

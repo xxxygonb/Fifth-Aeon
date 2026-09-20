@@ -19,7 +19,7 @@ class CollectionModel {
         const lastActive = data.rows[0].lastActive as Date;
         const elapsed = Date.now() - lastActive.getTime();
         if (elapsed > CollectionModel.dailyRewardTime) {
-            db.query(
+            await db.query(
                 `
                 UPDATE CCG.Account
                 SET lastActive = CURRENT_TIMESTAMP

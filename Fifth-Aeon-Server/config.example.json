@@ -1,0 +1,5 @@
+{
+    "connectionString": "postgres://postgres:postgres@localhost:5432/ccg",
+    "jwtSecret": "change-me-to-a-long-random-string",
+    "sendgridAPIKey": null
+}

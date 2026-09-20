@@ -57,7 +57,6 @@ export class Messenger implements NetworkInterface {
     private enabled = true;
     private maxConnectAttempts = Infinity;
 
-    private loggedIn = false;
     public connectChange: (status: boolean) => void = () => null;
 
     constructor(
@@ -192,9 +191,8 @@ export class Messenger implements NetworkInterface {
         this.onConnectChange(true);
         this.sendMessageToServer(MessageType.Connect, {});
         console.log('Connected, requesting queued messages.');
-        if (this.loggedIn) {
-            this.emptyMessageQueue();
-        }
+        // Flush messages queued while offline (SetDeck, JoinQueue, ...)
+        this.emptyMessageQueue();
     }
 
     private onConnectChange(isConnected: boolean) {

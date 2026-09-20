@@ -92,7 +92,7 @@ router.post("/verifyEmail", passwords.authorize, async (req, res, next) => {
             );
 
             if (verificationResult.rowCount === 1) {
-                collectionModel.rewardPlayer(user, { packs: 2, gold: 0 });
+                await collectionModel.rewardPlayer(user, { packs: 2, gold: 0 });
             }
 
             res.status(200).json({

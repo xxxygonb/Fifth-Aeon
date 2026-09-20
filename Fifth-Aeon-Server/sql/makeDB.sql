@@ -1,8 +1,13 @@
-CREATE SCHEMA CCG;
+CREATE SCHEMA IF NOT EXISTS CCG;
 
-CREATE TYPE CCG.USER_ROLE AS ENUM ('guest', 'user', 'mod', 'admin');
+-- Idempotent enum creation (safe on partially built schemas)
+DO $$ BEGIN
+    CREATE TYPE CCG.USER_ROLE AS ENUM ('guest', 'user', 'mod', 'admin');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE CCG.Account (
+CREATE TABLE IF NOT EXISTS CCG.Account (
     accountID           SERIAL PRIMARY KEY,
     username            VARCHAR(30) NOT NULL CHECK(username SIMILAR TO '[a-zA-Z0-9]+( [a-zA-Z0-9]+)*'),
     email               VARCHAR(254),
@@ -18,10 +23,10 @@ CREATE TABLE CCG.Account (
 );
 
 -- Case insensative unique constraints
-CREATE UNIQUE INDEX unique_username ON CCG.Account (LOWER(username));
-CREATE UNIQUE INDEX unique_email    ON CCG.Account (LOWER(email));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_username ON CCG.Account (LOWER(username));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_email    ON CCG.Account (LOWER(email));
 
-CREATE TABLE CCG.Deck (
+CREATE TABLE IF NOT EXISTS CCG.Deck (
     deckID              SERIAL PRIMARY KEY,
     accountID           INTEGER,
     deckData            JSON,
@@ -29,21 +34,21 @@ CREATE TABLE CCG.Deck (
 );
 
 -- Draft Storage
-CREATE TABLE CCG.Draft (
+CREATE TABLE IF NOT EXISTS CCG.Draft (
     accountID INTEGER NOT NULL,
     draftData JSON NOT NULL,
     FOREIGN KEY (accountID) REFERENCES CCG.Account(accountID) ON DELETE CASCADE
 );
 
 -- Mod Definitions
-CREATE TABLE CCG.Card (
+CREATE TABLE IF NOT EXISTS CCG.Card (
     id          UUID PRIMARY KEY,
     ownerID     INTEGER NOT NULL,
     cardData    JSON,
     FOREIGN KEY (ownerID) REFERENCES CCG.Account(accountID) ON DELETE CASCADE
 );
 
-CREATE TABLE CCG.Set (
+CREATE TABLE IF NOT EXISTS CCG.Set (
     id             UUID PRIMARY KEY,
     setName        VARCHAR(256) NOT NULL,
     setDescription VARCHAR(1048576),
@@ -53,26 +58,26 @@ CREATE TABLE CCG.Set (
     FOREIGN KEY (ownerID) REFERENCES CCG.Account(accountID) ON DELETE CASCADE
 );
 
-CREATE TABLE CCG.SetMembership (
+CREATE TABLE IF NOT EXISTS CCG.SetMembership (
     setID       UUID REFERENCES CCG.Set(id) ON DELETE CASCADE,
     cardID      UUID REFERENCES CCG.Card(id) ON DELETE CASCADE,
     PRIMARY KEY (setID, cardID)
 );
 
-CREATE TABLE CCG.SetActive (
+CREATE TABLE IF NOT EXISTS CCG.SetActive (
     setID       UUID REFERENCES CCG.Set(id) ON DELETE CASCADE,
     accountID   INTEGER REFERENCES CCG.Account(accountID) ON DELETE CASCADE,
     PRIMARY KEY (setID, accountID)
 );
 
 -- A.I Tournament definitons
-CREATE TABLE CCG.AITournament (
+CREATE TABLE IF NOT EXISTS CCG.AITournament (
     id           SERIAL PRIMARY KEY,
     name         VARCHAR(30),
     active       BOOLEAN
 );
 
-CREATE TABLE CCG.TournamentTeam (
+CREATE TABLE IF NOT EXISTS CCG.TournamentTeam (
     id           SERIAL PRIMARY KEY,
     tournamentID INTEGER,
     teamName     VARCHAR(30) NOT NULL CHECK(teamName SIMILAR TO '[a-zA-Z0-9]+( [a-zA-Z0-9]+)*'),
@@ -82,11 +87,11 @@ CREATE TABLE CCG.TournamentTeam (
     contactOrg   VARCHAR(60) NOT NULL CHECK(LENGTH(contactOrg) > 0),
     FOREIGN KEY (tournamentID) REFERENCES CCG.AITournament(id)
 );
-CREATE UNIQUE INDEX unique_team_name ON CCG.TournamentTeam (LOWER(teamName));
-CREATE UNIQUE INDEX unique_contact_email ON CCG.TournamentTeam (LOWER(contactEmail));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_team_name ON CCG.TournamentTeam (LOWER(teamName));
+CREATE UNIQUE INDEX IF NOT EXISTS unique_contact_email ON CCG.TournamentTeam (LOWER(contactEmail));
 
 
-CREATE TABLE CCG.TeamSubmission (
+CREATE TABLE IF NOT EXISTS CCG.TeamSubmission (
     id           SERIAL PRIMARY KEY,
     owningTeam   INTEGER NOT NULL,
     submitter    INTEGER NOT NULL,
@@ -96,7 +101,7 @@ CREATE TABLE CCG.TeamSubmission (
     FOREIGN KEY (submitter) REFERENCES CCG.Account(accountID) ON DELETE CASCADE
 );
 
-CREATE TABLE CCG.TournamentParticipant (
+CREATE TABLE IF NOT EXISTS CCG.TournamentParticipant (
     accountID    INTEGER NOT NULL,
     teamID       INTEGER NOT NULL,
     tournamentID INTEGER NOT NULL,

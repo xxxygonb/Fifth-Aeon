@@ -27,7 +27,20 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 Write-Host "[OK] Node.js $(node --version)"
 
-# ---- 2. Check PostgreSQL (recommended) ----
+# ---- 2. Server config (created from template on first run) ----
+$serverConfig = Join-Path $ServerDir 'config.json'
+if (-not (Test-Path $serverConfig)) {
+    $template = Join-Path $ServerDir 'config.example.json'
+    if (Test-Path $template) {
+        Copy-Item $template $serverConfig
+        Write-Host '[OK] Created Fifth-Aeon-Server\config.json from config.example.json'
+        Write-Host '     Edit it if your PostgreSQL password is not "postgres".'
+    } else {
+        Write-Host '[WARN] Missing Fifth-Aeon-Server\config.json and no config.example.json template found.'
+    }
+}
+
+# ---- 3. Check PostgreSQL (recommended) ----
 if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
     Write-Host '[WARN] psql not found in PATH. Server may still work if PostgreSQL is running.'
 } else {
@@ -48,7 +61,7 @@ if (-not (Get-Command psql -ErrorAction SilentlyContinue)) {
     }
 }
 
-# ---- 3. Install dependencies if missing ----
+# ---- 4. Install dependencies if missing ----
 if (-not (Test-Path (Join-Path $ServerDir 'node_modules'))) {
     Write-Host '[..] Installing server dependencies ...'
     Push-Location $ServerDir
@@ -69,7 +82,7 @@ if (-not (Test-Path (Join-Path $ClientDir 'node_modules'))) {
     Write-Host '[OK] Client dependencies present'
 }
 
-# ---- 4. Compile server (always incremental, avoids stale dist) ----
+# ---- 5. Compile server (always incremental, avoids stale dist) ----
 Write-Host '[..] Compiling server ...'
 Push-Location $ServerDir
 cmd /c "npx gulp scripts >> `"$LogDir\build-server.log`" 2>&1"
@@ -80,30 +93,28 @@ if ($compileExit -ne 0) {
 }
 Write-Host '[OK] Server compiled'
 
-# ---- 5. Stop anything already on our ports ----
+# ---- 6. Stop anything already on our ports ----
 foreach ($port in 2222, 4200) {
     Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty OwningProcess -Unique |
         ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
 }
 
-# ---- 6. Start game server ----
+# ---- 7. Start game server ----
+# Redirect through a detached cmd window so log-file handles do not die
+# with this script; killing the parent must never kill the services.
 Write-Host '[..] Starting game server on port 2222 ...'
-Start-Process -FilePath 'node' -ArgumentList 'dist\index.js' `
-    -WorkingDirectory $ServerDir -WindowStyle Minimized `
-    -RedirectStandardOutput (Join-Path $LogDir 'server.log') `
-    -RedirectStandardError (Join-Path $LogDir 'server-err.log')
+$serverCmd = "/c cd /d `"$ServerDir`" && node dist\index.js > `"$LogDir\server.log`" 2>&1"
+Start-Process -FilePath 'cmd.exe' -ArgumentList $serverCmd -WindowStyle Minimized
 
-# ---- 7. Start web client ----
+# ---- 8. Start web client ----
 Write-Host '[..] Starting web client on port 4200 ...'
 $npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Source
 if (-not $npx) { $npx = 'npx.cmd' }
-Start-Process -FilePath $npx -ArgumentList 'ng', 'serve' `
-    -WorkingDirectory $ClientDir -WindowStyle Minimized `
-    -RedirectStandardOutput (Join-Path $LogDir 'client.log') `
-    -RedirectStandardError (Join-Path $LogDir 'client-err.log')
+$clientCmd = "/c cd /d `"$ClientDir`" && `"$npx`" ng serve > `"$LogDir\client.log`" 2>&1"
+Start-Process -FilePath 'cmd.exe' -ArgumentList $clientCmd -WindowStyle Minimized
 
-# ---- 8. Wait and verify ----
+# ---- 9. Wait and verify ----
 Write-Host '[..] Waiting for services (up to 120s) ...'
 $serverUp = $false
 $clientUp = $false

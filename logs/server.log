@@ -1,24 +1,24 @@
+No Sendgrid API Key found in SENDGRID_API_KEY environment variable. Emails will not be sent.
 Starting Server on port 2222
 Server started on port 2222
-[0mGET /report [32m200[0m 2.319 ms - 198[0m
-[0mGET / [33m404[0m 1.942 ms - 139[0m
-[0mGET /api/auth/userdata [32m200[0m 146.894 ms - 266[0m
-[0mGET /api/cards/getCollection [36m304[0m 2.344 ms - -[0m
-[0mGET /api/modding/getUserCards [36m304[0m 2.477 ms - -[0m
-[0mGET /api/modding/userSets [36m304[0m 7.493 ms - -[0m
-[0mGET /api/cards/checkDaily [32m200[0m 2.890 ms - 41[0m
-[0mGET /api/modding/getUserSetMemberships [36m304[0m 115.525 ms - -[0m
-[0mGET /api/modding/getActiveSets [36m304[0m 211.860 ms - -[0m
-[0mGET /api/cards/getDecks [36m304[0m 254.947 ms - -[0m
-[0mGET /api/cards/getDecks [36m304[0m 2.498 ms - -[0m
-[0mGET / [33m404[0m 0.889 ms - 139[0m
-[0mGET /api/auth/userdata [32m200[0m 146.852 ms - 266[0m
-[0mGET /api/cards/getCollection [36m304[0m 3.124 ms - -[0m
-[0mGET /api/modding/userSets [36m304[0m 7.058 ms - -[0m
-[0mGET /api/cards/checkDaily [32m200[0m 1.329 ms - 41[0m
-[0mGET /api/modding/getUserCards [36m304[0m 177.928 ms - -[0m
-[0mGET /api/modding/getActiveSets [36m304[0m 267.056 ms - -[0m
-[0mGET /api/modding/getUserSetMemberships [36m304[0m 313.884 ms - -[0m
-[0mGET /api/cards/getDecks [36m304[0m 323.750 ms - -[0m
-[0mGET /api/cards/getDecks [36m304[0m 1.402 ms - -[0m
-[0mPOST /api/cards/storeDeck [32m200[0m 51.424 ms - 9[0m
+[0mGET /report [32m200[0m 2.968 ms - 198[0m
+[0mGET / [33m404[0m 1.970 ms - 139[0m
+[0mGET / [33m404[0m 0.792 ms - 139[0m
+[0mGET /api/auth/userdata [32m200[0m 183.564 ms - 266[0m
+[0mGET /api/auth/userdata [36m304[0m 4.548 ms - -[0m
+[0mGET /api/cards/getCollection [36m304[0m 2.282 ms - -[0m
+[0mGET /api/modding/getUserSetMemberships [36m304[0m 8.927 ms - -[0m
+[0mGET /api/cards/checkDaily [32m200[0m 2.990 ms - 41[0m
+[0mGET /api/modding/userSets [36m304[0m 321.269 ms - -[0m
+[0mGET /api/modding/getUserCards [36m304[0m 347.454 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 443.396 ms - -[0m
+[0mGET /api/modding/getActiveSets [36m304[0m 465.806 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 2.474 ms - -[0m
+[0mGET /api/cards/getCollection [36m304[0m 3.736 ms - -[0m
+[0mGET /api/modding/getUserCards [36m304[0m 1.451 ms - -[0m
+[0mGET /api/modding/userSets [36m304[0m 2.606 ms - -[0m
+[0mGET /api/modding/getUserSetMemberships [36m304[0m 4.195 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 1.309 ms - -[0m
+[0mGET /api/modding/getActiveSets [36m304[0m 3.072 ms - -[0m
+[0mGET /api/cards/getDecks [36m304[0m 5.594 ms - -[0m
+[0mGET /api/cards/checkDaily [32m200[0m 3.017 ms - 41[0m

@@ -250,7 +250,12 @@ export class WebClient {
     }
 
     public exitGame(final = false) {
-        this.gameManager.exitGame();
+        // Only send Quit while a game is actually in progress; after the end
+        // dialog the game is already over and sending Quit again (e.g. from
+        // ngOnDestroy during navigation) produces duplicate quit actions.
+        if (this.state === ClientState.InGame) {
+            this.gameManager.exitGame();
+        }
         if (final) {
             this.messenger.close();
         } else {
