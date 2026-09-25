@@ -1,16 +1,86 @@
+// 编辑页布局：左侧主编辑区 + 右侧固定卡牌预览
+:host {
+    display: block;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.editor-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.editor-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.editor-side {
+    flex: 0 0 400px;
+    position: sticky;
+    /* 页面滚动容器是 mat-sidenav-content（工具栏下方 y=64 处开始），
+       sticky 的偏移以它为参照，top:0 即与「基本信息」顶部严格对齐 */
+    top: 0;
+}
+
+mat-card {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 0 20px;
+    float: none;
+    overflow: hidden;
+}
+
 .editor-container {
     display: flex;
     flex-direction: column;
 }
 
-.editor-container > * {
-    width: 100%;
+.form-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    mat-form-field {
+        flex: 1 1 120px;
+        min-width: 100px;
+    }
 }
 
-mat-card {
-    box-sizing: border-box;
-    margin: 20px;
-    float: left;
-    overflow: hidden;
-    min-width: 300px;
+.section-label {
+    margin: 8px 0 0;
+    color: #5f6368;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.upload-button {
+    margin-top: 8px;
+}
+
+/* 预览卡仅作展示：屏蔽鼠标事件，去除悬浮缩放效果 */
+#card-preview ccg-card {
+    display: block;
+    pointer-events: none;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+@media (max-width: 1000px) {
+    .editor-layout {
+        flex-direction: column;
+    }
+
+    .editor-side {
+        position: static;
+        width: 100%;
+        flex: 1 1 auto;
+    }
 }

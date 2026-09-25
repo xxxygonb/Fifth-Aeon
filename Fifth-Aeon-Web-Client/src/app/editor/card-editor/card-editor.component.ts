@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import {
-    UnitData,
     cardList,
     CardData,
     defaultDataObj
@@ -33,10 +32,13 @@ export class CardEditorComponent implements OnInit {
         return t(types[key]);
     }
 
+    /** 保存按钮状态：idle | saving | saved | error */
+    public saveState: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
+
     constructor(
         route: ActivatedRoute,
         router: Router,
-        editorData: EditorDataService
+        private editorData: EditorDataService
     ) {
         setInterval(() => this.refreshPreview(), 3000);
         route.paramMap.subscribe(params => {
@@ -46,7 +48,17 @@ export class CardEditorComponent implements OnInit {
                 this.data = card;
                 this.refreshPreview();
             } else {
-                console.error('No card with id', id);
+                // 直达/刷新编辑页 URL 时卡牌列表可能尚未从服务器加载完，
+                // 等待加载完成后再取卡，避免绑定到默认模板卡（法术）
+                editorData.waitForCards().then(() => {
+                    const loaded = editorData.getCard(id);
+                    if (loaded) {
+                        this.data = loaded;
+                        this.refreshPreview();
+                    } else {
+                        console.error('No card with id', id);
+                    }
+                });
             }
         });
     }
@@ -72,6 +84,21 @@ export class CardEditorComponent implements OnInit {
 
     public refreshPreview() {
         this.previewCard = cardList.buildInstance(this.data);
+    }
+
+    /** 手动保存当前编辑的卡牌（含卡组集合），并给出保存结果反馈 */
+    public saveCard() {
+        if (this.saveState === 'saving') {
+            return;
+        }
+        this.saveState = 'saving';
+        this.editorData
+            .saveData()
+            .then(() => (this.saveState = 'saved'))
+            .catch(() => (this.saveState = 'error'))
+            .then(() => {
+                setTimeout(() => (this.saveState = 'idle'), 2000);
+            });
     }
 
     // Enforce resource requirements summing up to 6 (so it fits in UI)

@@ -23,6 +23,9 @@ export class AuthenticationService {
     // Shared "waiting for first login" promise so afterLogin() does not
     // append a new never-removed callback on every call.
     private afterLoginPromise: Promise<UserData> | null = null;
+    // Shared "restore login state" promise so the many attemptLogin() callers
+    // share one server round trip instead of racing each other.
+    private initPromise: Promise<boolean> | null = null;
     private redirectTarget = 'lobby';
 
     constructor(private http: HttpClient, private router: Router) { }
@@ -45,7 +48,26 @@ export class AuthenticationService {
         }
     }
 
-    public attemptLogin() {
+    /**
+     * 恢复登录态（幂等）：无论多少处调用，只向服务器确认一次令牌。
+     * 登录成功后 resolved 值为 true，且 this.user 已就绪。
+     */
+    public attemptLogin(): Promise<boolean> {
+        if (!this.initPromise) {
+            this.initPromise = this.doAttemptLogin();
+        }
+        return this.initPromise;
+    }
+
+    /**
+     * 登录态初始化完成的信号：路由守卫必须等待它，
+     * 否则刷新页面时会在登录态恢复前误判为未登录。
+     */
+    public get ready(): Promise<boolean> {
+        return this.attemptLogin();
+    }
+
+    private doAttemptLogin(): Promise<boolean> {
         if (environment.serverless) {
             return Promise.resolve(false);
         }
@@ -57,7 +79,10 @@ export class AuthenticationService {
             const data = JSON.parse(rawData);
             return this.confirmLogin(data.token).then(res => {
                 if (res) {
-                    this.setLogin(res);
+                    // 刷新场景下的自动恢复：只恢复登录态，
+                    // 不触发 redirect() 导航（否则会与路由守卫竞争，
+                    // 把用户从刷新前的页面拽到 redirectTarget）
+                    this.setLogin(res, false);
                 }
                 return res !== null;
             });
@@ -113,6 +138,8 @@ export class AuthenticationService {
     public logout() {
         this.user = null;
         this.afterLoginPromise = null;
+        // 允许之后再次尝试恢复登录态（此时 localStorage 已清空）
+        this.initPromise = null;
         localStorage.setItem('login', '');
         this.authChangeCallbacks.forEach(callback => callback(null));
         this.router.navigateByUrl('/');
@@ -235,10 +262,17 @@ export class AuthenticationService {
             .catch(err => null);
     }
 
-    private setLogin(user: UserData) {
+    /**
+     * 写入登录态并广播。
+     * @param navigate 主动登录（登录页/注册/游客升级）为 true，登录后跳回
+     *                 redirectTarget；刷新时的自动恢复必须传 false。
+     */
+    private setLogin(user: UserData, navigate = true) {
         this.user = user;
         localStorage.setItem('login', JSON.stringify(user));
         this.authChangeCallbacks.forEach(callback => callback(this.getUser()));
-        this.redirect();
+        if (navigate) {
+            this.redirect();
+        }
     }
 }

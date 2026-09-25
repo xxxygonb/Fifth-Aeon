@@ -1,7 +1,35 @@
+// 在 card-editor 的左列内：占满列宽即可（外层布局由 card-editor 控制）
+:host {
+    display: block;
+    width: 100%;
+}
+
 mat-card {
     box-sizing: border-box;
-    margin: 20px;
-    float: left;
-    overflow: hidden;
-    min-width: 300px;
+    width: 100%;
+    margin: 0 0 20px;
+    float: none;
+    overflow-x: auto;
 }
+
+.mechanic-hint {
+    color: #888;
+    font-size: 13px;
+}
+
+/* 机制条目保持单行：机制/触发/目标/参数/按钮同一行，
+   内容过宽时卡片内横向滚动，绝不换行堆叠 */
+table {
+    width: max-content;
+    min-width: 100%;
+}
+
+td {
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+td mat-form-field {
+    width: 150px;
+}
+

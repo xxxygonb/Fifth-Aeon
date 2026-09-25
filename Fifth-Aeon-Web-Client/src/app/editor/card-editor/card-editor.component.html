@@ -1,197 +1,231 @@
-﻿<mat-card>
-    <mat-card-title>{{ "Basic Information" | tr }}</mat-card-title>
-    <mat-card-content class="editor-container">
-        <mat-form-field>
-            <input matInput placeholder="{{ 'Card Name' | tr }}" [(ngModel)]="data.name" />
-        </mat-form-field>
-        <mat-form-field>
-            <mat-select
-                placeholder="{{ 'Card Type' | tr }}"
-                [(ngModel)]="data.cardType"
-                (selectionChange)="changeType($event)"
-            >
-                <mat-option
-                    *ngFor="let cardType of cardTypeKeys"
-                    [value]="cardType"
-                    >{{ typeName(cardType, cardTypes) }}</mat-option
+<div class="editor-layout">
+    <div class="editor-main">
+        <mat-card>
+            <mat-card-title>{{ "Basic Information" | tr }}</mat-card-title>
+            <mat-card-content class="editor-container">
+                <div class="form-row">
+                    <mat-form-field>
+                        <input
+                            matInput
+                            placeholder="{{ 'Card Name' | tr }}"
+                            [(ngModel)]="data.name"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-select
+                            placeholder="{{ 'Card Type' | tr }}"
+                            [(ngModel)]="data.cardType"
+                            (selectionChange)="changeType($event)"
+                        >
+                            <mat-option
+                                *ngFor="let cardType of cardTypeKeys"
+                                [value]="cardType"
+                                >{{ typeName(cardType, cardTypes) }}</mat-option
+                            >
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+
+                <h4 class="section-label">{{ "Resource Cost" | tr }}</h4>
+                <div class="form-row">
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.cost.energy"
+                            placeholder="{{ 'Energy Cost' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            [max]="getReqMax('synthesis')"
+                            [(ngModel)]="data.cost.synthesis"
+                            placeholder="{{ 'Synthesis Requirement' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            [max]="getReqMax('growth')"
+                            [(ngModel)]="data.cost.growth"
+                            placeholder="{{ 'Growth Requirement' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            [max]="getReqMax('decay')"
+                            [(ngModel)]="data.cost.decay"
+                            placeholder="{{ 'Decay Requirement' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            [max]="getReqMax('renewal')"
+                            [(ngModel)]="data.cost.renewal"
+                            placeholder="{{ 'Renewal Requirement' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                </div>
+
+                <h4 class="section-label">{{ "Unit Information" | tr }}</h4>
+                <div class="form-row" *ngIf="data.cardType === cardTypes.Unit">
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.damage"
+                            placeholder="{{ 'Damage' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.life"
+                            placeholder="{{ 'Maximum Life' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <mat-select
+                            placeholder="{{ 'Unit Type' | tr }}"
+                            [(ngModel)]="data.type"
+                        >
+                            <mat-option
+                                *ngFor="let unitType of unitTypeKeys"
+                                [value]="unitType"
+                                >{{ typeName(unitType, unitTypes) }}</mat-option
+                            >
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+
+                <div
+                    class="form-row"
+                    *ngIf="data.cardType === cardTypes.Item"
                 >
-            </mat-select>
-        </mat-form-field>
-        <ccg-targeter-editor [data]="data.targeter"></ccg-targeter-editor>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.damage"
+                            placeholder="{{ 'Damage Bonus' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.life"
+                            placeholder="{{ 'Life Bonus' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                </div>
 
-        <input
-            #fileInput
-            hidden
-            type="file"
-            (change)="fileChange($event)"
-            placeholder="{{ 'Upload Image' | tr }}"
-            accept="image/*"
-            single
-        />
-        <button type="button" mat-raised-button (click)="fileInput.click()">
-            <mat-icon>file_upload</mat-icon> {{ 'Upload Image' | tr }}
-        </button>
-    </mat-card-content>
-</mat-card>
-
-<mat-card>
-    <mat-card-title>{{ "Resource Cost" | tr }}</mat-card-title>
-    <mat-card-content class="editor-container">
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.cost.energy"
-                placeholder="{{ 'Energy Cost' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                [max]="getReqMax('synthesis')"
-                [(ngModel)]="data.cost.synthesis"
-                placeholder="{{ 'Synthesis Requirement' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                [max]="getReqMax('growth')"
-                [(ngModel)]="data.cost.growth"
-                placeholder="{{ 'Growth Requirement' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                [max]="getReqMax('decay')"
-                [(ngModel)]="data.cost.decay"
-                placeholder="{{ 'Decay Requirement' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                [max]="getReqMax('renewal')"
-                [(ngModel)]="data.cost.renewal"
-                placeholder="{{ 'Renewal Requirement' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-    </mat-card-content>
-</mat-card>
-
-<mat-card *ngIf="data.cardType === cardTypes.Unit">
-    <mat-card-title>{{ "Unit Information" | tr }}</mat-card-title>
-    <mat-card-content class="editor-container">
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.damage"
-                placeholder="{{ 'Damage' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.life"
-                placeholder="{{ 'Maximum Life' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <mat-select placeholder="{{ 'Unit Type' | tr }}" [(ngModel)]="data.type">
-                <mat-option
-                    *ngFor="let unitType of unitTypeKeys"
-                    [value]="unitType"
-                    >{{ typeName(unitType, unitTypes) }}</mat-option
+                <div
+                    class="form-row"
+                    *ngIf="data.cardType === cardTypes.Enchantment"
                 >
-            </mat-select>
-        </mat-form-field>
-    </mat-card-content>
-</mat-card>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.empowerCost"
+                            placeholder="{{ 'Empower/Disempower Cost' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                    <mat-form-field>
+                        <input
+                            matInput
+                            min="0"
+                            max="99"
+                            [(ngModel)]="data.power"
+                            placeholder="{{ 'Base Power' | tr }}"
+                            type="number"
+                        />
+                    </mat-form-field>
+                </div>
 
-<mat-card *ngIf="data.cardType === cardTypes.Item">
-    <mat-card-title>{{ "Item Information" | tr }}</mat-card-title>
-    <mat-card-content class="editor-container">
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.damage"
-                placeholder="{{ 'Damage Bonus' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.life"
-                placeholder="{{ 'Life Bonus' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <!-- host targeter -->
-    </mat-card-content>
-</mat-card>
+                <h4 class="section-label">{{ "Targeter ID" | tr }}</h4>
+                <ccg-targeter-editor [data]="data.targeter"></ccg-targeter-editor>
 
-<mat-card *ngIf="data.cardType === cardTypes.Enchantment">
-    <mat-card-title>{{ "Enchantment Information" | tr }}</mat-card-title>
-    <mat-card-content class="editor-container">
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.empowerCost"
-                placeholder="{{ 'Empower/Disempower Cost' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-        <mat-form-field>
-            <input
-                matInput
-                min="0"
-                max="99"
-                [(ngModel)]="data.power"
-                placeholder="{{ 'Base Power' | tr }}"
-                type="number"
-            />
-        </mat-form-field>
-    </mat-card-content>
-</mat-card>
+                <button
+                    type="button"
+                    mat-raised-button
+                    (click)="fileInput.click()"
+                    class="upload-button"
+                >
+                    <mat-icon>file_upload</mat-icon> {{ 'Upload Image' | tr }}
+                </button>
+                <input
+                    #fileInput
+                    hidden
+                    type="file"
+                    (change)="fileChange($event)"
+                    placeholder="{{ 'Upload Image' | tr }}"
+                    accept="image/*"
+                    single
+                />
+            </mat-card-content>
+        </mat-card>
 
-<mat-card id="card-preview">
-    <mat-card-title>{{ "Card Preview" | tr }}</mat-card-title>
-    <mat-card-content>
-        <ccg-card
-            scale="1.9"
-            [card]="previewCard"
-            noTranslate="true"
-        ></ccg-card>
-    </mat-card-content>
-    <mat-card-actions>
-        <button mat-raised-button (click)="refreshPreview()">
-            <mat-icon>refresh</mat-icon> {{ 'Refresh Preview' | tr }}
-        </button>
-    </mat-card-actions>
-</mat-card>
+        <ccg-mechanic-editor [card]="data"></ccg-mechanic-editor>
+    </div>
 
-<ccg-mechanic-editor [card]="data"></ccg-mechanic-editor>
+    <div class="editor-side">
+        <mat-card id="card-preview">
+            <mat-card-title>{{ "Card Preview" | tr }}</mat-card-title>
+            <mat-card-content>
+                <ccg-card
+                    scale="2.5"
+                    [card]="previewCard"
+                    noTranslate="true"
+                ></ccg-card>
+            </mat-card-content>
+            <mat-card-actions class="preview-actions">
+                <button mat-raised-button (click)="refreshPreview()">
+                    <mat-icon>refresh</mat-icon> {{ 'Refresh Preview' | tr }}
+                </button>
+                <button
+                    mat-raised-button
+                    color="primary"
+                    (click)="saveCard()"
+                    [disabled]="saveState === 'saving'"
+                >
+                    <mat-icon>save</mat-icon>
+                    {{
+                        (saveState === 'saving'
+                            ? 'Saving...'
+                            : saveState === 'saved'
+                            ? 'Saved'
+                            : saveState === 'error'
+                            ? 'Save failed'
+                            : 'Save Card') | tr
+                    }}
+                </button>
+            </mat-card-actions>
+        </mat-card>
+    </div>
+</div>

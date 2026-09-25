@@ -4,7 +4,7 @@
     </button>
     <span>{{ 'Fifth Aeon - Editor' | tr }}</span>
     <span class="toolbar-spacer"></span>
-    <button mat-icon-button routerLink="/lobby">
+    <button mat-icon-button (click)="goHome()">
         <mat-icon>home</mat-icon>
     </button>
 </mat-toolbar>
@@ -18,6 +18,11 @@
                 }}</a>
             </li>
             <li>
+                <a (click)="nav.close()" routerLink="/editor/tutorial">{{
+                    'Card Tutorial' | tr
+                }}</a>
+            </li>
+            <li>
                 <a (click)="nav.close()" routerLink="/editor/sets">{{
                     'Set List' | tr
                 }}</a>
@@ -28,9 +33,7 @@
                 }}</a>
             </li>
             <li>
-                <a (click)="nav.close()" routerLink="/lobby">{{
-                    'Lobby' | tr
-                }}</a>
+                <a (click)="nav.close(); goHome()">{{ 'Lobby' | tr }}</a>
             </li>
         </ul>
     </mat-sidenav>

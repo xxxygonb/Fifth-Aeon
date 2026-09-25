@@ -13,6 +13,7 @@ enum EditorType {
     Numeric,
     Enumerable,
     Resource,
+    CardSearch,
 }
 
 interface EnumValue {
@@ -34,6 +35,15 @@ export class ParameterEditorComponent implements OnInit {
     >();
     public EditorType = EditorType;
 
+    /** 卡牌搜索关键字（Card/Spell/Unit/Item/Enchantment 参数） */
+    public searchKeyword = '';
+    /** 搜索结果缓存：只在输入时更新（避免变更检测循环） */
+    public searchResults: { id: string; name: string }[] = [];
+
+    public trackOption(index: number, option: { id: string }) {
+        return option.id;
+    }
+
     private cardTypeValues = new Map<CardType | undefined, EnumValue[]>();
     private resourceEnumValues = this.getEnumValues(ResourceType);
     private cardEnumValues = this.getEnumValues(CardType);
@@ -49,9 +59,22 @@ export class ParameterEditorComponent implements OnInit {
             return EditorType.Numeric;
         } else if (this.type === ParameterType.Resource) {
             return EditorType.Resource;
+        } else if (this.isCardSearch()) {
+            return EditorType.CardSearch;
         } else {
             return EditorType.Enumerable;
         }
+    }
+
+    /** 卡牌类参数（可能随卡牌总量增长）一律走搜索式选择 */
+    public isCardSearch(): boolean {
+        return (
+            this.type === ParameterType.Card ||
+            this.type === ParameterType.Spell ||
+            this.type === ParameterType.Unit ||
+            this.type === ParameterType.Item ||
+            this.type === ParameterType.Enchantment
+        );
     }
 
     public getMin() {
@@ -66,16 +89,6 @@ export class ParameterEditorComponent implements OnInit {
                 return this.cardEnumValues;
             case ParameterType.UnitType:
                 return this.unitEnumValues;
-            case ParameterType.Card:
-                return this.getCardTypeValues();
-            case ParameterType.Spell:
-                return this.getCardTypeValues(CardType.Spell);
-            case ParameterType.Unit:
-                return this.getCardTypeValues(CardType.Unit);
-            case ParameterType.Item:
-                return this.getCardTypeValues(CardType.Item);
-            case ParameterType.Enchantment:
-                return this.getCardTypeValues(CardType.Enchantment);
             case ParameterType.Ability:
                 return this.abilityValues;
         }
@@ -99,16 +112,78 @@ export class ParameterEditorComponent implements OnInit {
         this.change.emit(this.data);
     }
 
-    public ngOnInit() {}
+    public ngOnInit() {
+        this.searchResults = [];
+    }
 
-    private getCardTypeValues(type?: CardType): EnumValue[] {
-        const oldVals = this.cardTypeValues.get(type);
-        if (oldVals) {
-            return oldVals;
+    /** data 输入变化（新参数控件/换机制）时重置搜索状态 */
+    public ngOnChanges() {
+        this.searchKeyword = '';
+        this.searchResults = [];
+    }
+
+    // ---- 卡牌搜索选择 ----
+
+    /**
+     * 搜索匹配：按本地化卡名或 ID 过滤该类型的全部卡牌
+     */
+    public getCardOptions(): { id: string; name: string }[] {
+        const keyword = this.searchKeyword.trim().toLowerCase();
+        const expected = this.expectedCardType();
+        return cardList
+            .getCards()
+            .filter(card => !expected || card.getCardType() === expected)
+            .filter(
+                card =>
+                    !keyword ||
+                    card.getName().toLowerCase().includes(keyword) ||
+                    card.getDataId().toLowerCase().includes(keyword)
+            )
+            .map(card => ({
+                id: card.getDataId(),
+                name: card.getName()
+            }));
+    }
+
+    private expectedCardType(): CardType | undefined {
+        switch (this.type) {
+            case ParameterType.Spell:
+                return CardType.Spell;
+            case ParameterType.Unit:
+                return CardType.Unit;
+            case ParameterType.Item:
+                return CardType.Item;
+            case ParameterType.Enchantment:
+                return CardType.Enchantment;
+            default:
+                return undefined;
         }
-        const newVals = this.generateCardTypeValues(type);
-        this.cardTypeValues.set(type, newVals);
-        return newVals;
+    }
+
+    /** 搜索输入：更新匹配结果缓存（不走变更检测自动重算） */
+    public onSearchChange(keyword: string) {
+        this.searchKeyword = keyword;
+        this.searchResults = this.getCardOptions();
+    }
+
+    /** 当前已选卡牌的显示名 */
+    public selectedCardName(): string {
+        if (typeof this.data !== 'string' || this.data === '') {
+            return '';
+        }
+        const card = cardList.getCard(this.data);
+        if (!card || card.getDataId() !== this.data) {
+            return '';
+        }
+        return card.getName();
+    }
+
+    /** 点击搜索结果选中卡牌 */
+    public selectCard(id: string) {
+        this.data = id;
+        this.searchKeyword = '';
+        this.searchResults = [];
+        this.onChange();
     }
 
     private getAbilityValues(): EnumValue[] {
@@ -116,17 +191,5 @@ export class ParameterEditorComponent implements OnInit {
         return abilityIds.map((id) => {
             return { id, name: id };
         });
-    }
-
-    private generateCardTypeValues(type?: CardType): EnumValue[] {
-        return cardList
-            .getCards()
-            .filter((card) => !type || card.getCardType() === type)
-            .map((card) => {
-                return {
-                    id: card.getDataId(),
-                    name: card.getName(),
-                };
-            });
     }
 }

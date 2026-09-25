@@ -1,0 +1,42 @@
+# ============================================================
+# Fifth Aeon 根 .gitignore
+# 仓库根为 g:\Fifth-Aeon（含 Model / Server / Web-Client 三份代码）
+# ============================================================
+
+# ---- 运行时产物（一键启动脚本生成的日志） ----
+logs/
+*.log
+
+# ---- 依赖 ----
+node_modules/
+
+# ---- 编译产物 ----
+Fifth-Aeon-Server/dist/
+Fifth-Aeon-Web-Client/dist/
+Fifth-Aeon-Web-Client/tmp/
+Fifth-Aeon-Web-Client/out-tsc/
+Fifth-Aeon-Web-Client/.angular/
+Fifth-Aeon-Web-Client/.sass-cache/
+Fifth-Aeon-Web-Client/coverage/
+
+# ---- 敏感配置（模板 config.example.json 保留提交） ----
+Fifth-Aeon-Server/config.json
+
+# ---- IDE / 编辑器 ----
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# ---- 系统文件 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 临时与备份文件 ----
+*.tmp
+*.bak
+*~
+npm-debug.log*
+yarn-error.log
+yarn-debug.log

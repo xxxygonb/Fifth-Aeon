@@ -36,6 +36,9 @@ export class EditorDataService {
     private cardsInSet = new Map<string, Set<string>>();
     private setCache = new Map<string, CardSet>();
     private loaded?: string;
+    // 用户卡牌列表是否已从服务器加载完成（直达编辑页 URL 时需要等待它）
+    private cardsLoaded = false;
+    private cardsLoadedCallbacks: Array<() => void> = [];
 
     constructor(
         private collectionService: CollectionService,
@@ -48,7 +51,7 @@ export class EditorDataService {
                 this.loadData();
             }
         });
-        setInterval(() => this.saveData(), 10000);
+        setInterval(() => this.saveData().catch(() => null), 10000);
     }
 
     private loadActiveSets() {
@@ -130,7 +133,7 @@ export class EditorDataService {
     }
 
     public saveSet(set: SetInformation) {
-        lastValueFrom(this.http
+        return lastValueFrom(this.http
             .post(
                 EditorDataService.saveSetRoute,
                 { setInfo: set },
@@ -138,8 +141,7 @@ export class EditorDataService {
                     headers: this.auth.getAuthHeader()
                 }
             ))
-            .then(() => this.markSetSaved(set))
-            .catch(err => console.warn('Failed to save set', err));
+            .then(() => this.markSetSaved(set));
     }
 
     private saveCard(card: CardData) {
@@ -152,8 +154,7 @@ export class EditorDataService {
                     headers: this.auth.getAuthHeader()
                 }
             ))
-            .then(() => this.markCardSaved(card))
-            .catch(err => console.warn('Failed to save card', err));
+            .then(() => this.markCardSaved(card));
     }
 
     private markCardSaved(card: CardData) {
@@ -217,27 +218,44 @@ export class EditorDataService {
         return this.cards.find(card => card.id === id);
     }
 
+    /**
+     * 等待用户卡牌列表从服务器加载完成。
+     * 直接刷新/打开 /editor/card/:id 时 loadCards 尚未完成，
+     * getCard 会查不到卡，必须先等本 Promise。
+     */
+    public waitForCards(): Promise<void> {
+        if (this.cardsLoaded) {
+            return Promise.resolve();
+        }
+        return new Promise(resolve => {
+            this.cardsLoadedCallbacks.push(resolve);
+        });
+    }
+
     public getCards() {
         return this.cards;
     }
 
-    public saveData() {
+    /** 保存所有有改动的卡牌与集合，返回全部保存完成（或失败）后的 Promise */
+    public saveData(): Promise<void> {
         if (!this.auth.loggedIn()) {
-            return;
+            return Promise.resolve();
         }
+        const jobs: Promise<any>[] = [];
         for (const card of this.cards) {
             const lastSaved = this.lastSavedCardVersion.get(card.id);
             if (!lastSaved || !isEqual(card, lastSaved)) {
-                this.saveCard(card);
+                jobs.push(this.saveCard(card));
             }
         }
         for (const set of this.sets) {
             const lastSaved = this.lastSavedSetVersion.get(set.id);
             if (!lastSaved || !isEqual(set, lastSaved)) {
-                this.saveSet(set);
+                jobs.push(this.saveSet(set));
             }
         }
         this.addToCollection();
+        return Promise.all(jobs).then(() => undefined);
     }
 
     private loadData() {
@@ -316,6 +334,9 @@ export class EditorDataService {
                     this.markCardSaved(card);
                 }
                 this.addToCollection();
+                this.cardsLoaded = true;
+                this.cardsLoadedCallbacks.forEach(cb => cb());
+                this.cardsLoadedCallbacks = [];
             });
     }
 

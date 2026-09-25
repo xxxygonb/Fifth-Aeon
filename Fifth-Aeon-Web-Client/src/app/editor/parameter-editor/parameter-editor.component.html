@@ -1,9 +1,9 @@
-﻿<ng-container [ngSwitch]="getEditorType()">
+<ng-container [ngSwitch]="getEditorType()">
     <mat-form-field *ngSwitchCase="EditorType.Numeric">
         <input
             (change)="onChange($event)"
             [(ngModel)]="data"
-            [placeholder]="name"
+            [placeholder]="name | tr"
             matInput
             [min]="getMin()"
             max="99"
@@ -15,13 +15,45 @@
         <mat-select
             (selectionChange)="onChange($event)"
             [(ngModel)]="data"
-            [placeholder]="name"
+            [placeholder]="name | tr"
         >
             <mat-option *ngFor="let item of getValues()" [value]="item.id">{{
-                item.name
+                item.name | tr
             }}</mat-option>
         </mat-select>
     </mat-form-field>
+
+    <!-- 卡牌类参数：搜索选择（后续卡牌会越来越多，不提供完整列表） -->
+    <div class="card-search" *ngSwitchCase="EditorType.CardSearch">
+        <span class="selected-card" *ngIf="selectedCardName()">
+            {{ 'Selected: ' | tr }}{{ selectedCardName() }}
+        </span>
+        <input
+            class="card-search-input"
+            [ngModel]="searchKeyword"
+            (ngModelChange)="onSearchChange($event)"
+            [placeholder]="'Search cards by name' | tr"
+            matInput
+        />
+        <ng-container *ngIf="searchKeyword.trim()">
+            <div class="card-results">
+                <span
+                    class="card-result"
+                    *ngFor="
+                        let option of searchResults;
+                        trackBy: trackOption
+                    "
+                    (click)="selectCard(option.id)"
+                    >{{ option.name }}</span
+                >
+            </div>
+            <span
+                class="no-result"
+                *ngIf="searchResults.length === 0"
+                >{{ 'No matching cards' | tr }}</span
+            >
+        </ng-container>
+    </div>
 
     <p *ngSwitchCase="EditorType.Resource">{{ 'Resource PLaceholder' | tr }}</p>
 </ng-container>

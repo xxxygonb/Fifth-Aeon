@@ -36,6 +36,8 @@ export class WebClient {
     private username = '';
     private messenger: Messenger;
     private state: ClientState = ClientState.UnAuth;
+    /** Timestamp of the last ExitQueue, used to ignore late queue receipts */
+    private queueExitAt = 0;
     private connected = false;
     private connectedToLocalServer = false;
 
@@ -64,7 +66,19 @@ export class WebClient {
         });
 
         this.messenger = messengerService.getMessenger();
-        this.messenger.addHandler(MessageType.StartGame, this.startGame, this);
+        this.messenger.addHandler(MessageType.StartGame, msg => {
+            // A match confirmation arriving right after we left the queue is
+            // a stale pairing - do not yank the player into a game.
+            if (Date.now() - this.queueExitAt < 5000 && !msg.data.replay) {
+                return;
+            }
+            this.startGame(msg);
+        }, this);
+        this.messenger.addHandler(MessageType.ResendGame, () => {
+            // Server acknowledged our state request: the full event log has
+            // been delivered, resume normal tips/sounds/animations.
+            this.gameManager.finishReplay();
+        }, this);
         this.messenger.addHandler(
             MessageType.ClientError,
             msg => this.clientError(msg),
@@ -72,7 +86,14 @@ export class WebClient {
         );
         this.messenger.addHandler(
             MessageType.QueueJoined,
-            msg => this.changeState(ClientState.InQueue),
+            msg => {
+                // Ignore a late QueueJoined receipt after we left the queue,
+                // otherwise returning to the lobby flips back to "in queue".
+                if (Date.now() - this.queueExitAt < 5000) {
+                    return;
+                }
+                this.changeState(ClientState.InQueue);
+            },
             this
         );
 
@@ -89,9 +110,14 @@ export class WebClient {
     }
 
     private startGame(msg: Message) {
+        console.log(
+            '[recovery] StartGame received',
+            msg.data.replay ? '(replay)' : '(new game)'
+        );
         this.gameManager.startMultiplayerGame(
             msg.data.playerNumber,
-            msg.data.opponent
+            msg.data.opponent,
+            msg.data.replay === true
         );
         this.changeState(ClientState.InGame);
         this.router.navigate(['/game']);
@@ -164,6 +190,10 @@ export class WebClient {
         this.tips.setUsername(this.username);
         this.gameManager.setUsername(this.username);
         this.tips.playTip(TipType.StartGame);
+        // 登录态恢复后向服务器确认是否有一局进行中的游戏；
+        // 若有，服务器会回发 StartGame(replay) + 全部历史事件，直接回到对局。
+        console.log('[recovery] logged in, requesting game state resend');
+        this.messenger.sendMessageToServer(MessageType.ResendGame, {});
     }
 
     public enterOfflineMode(): boolean {
@@ -285,6 +315,7 @@ export class WebClient {
     }
 
     public leaveQueue() {
+        this.queueExitAt = Date.now();
         this.messenger.sendMessageToServer(MessageType.ExitQueue, {});
     }
 

@@ -9,6 +9,7 @@ import { EditorDataService } from './editor-data.service';
 import { EditorListComponent } from './editor-list/editor-list.component';
 import { EditorRoutingModule } from './editor-routing.module';
 import { EditorComponent } from './editor.component';
+import { EditorTutorialComponent } from './editor-tutorial/editor-tutorial.component';
 import { MechanicEditorComponent } from './mechanic-editor/mechanic-editor.component';
 import { ParameterEditorComponent } from './parameter-editor/parameter-editor.component';
 import { TargeterEditorComponent } from './targeter-editor/targeter-editor.component';
@@ -29,6 +30,7 @@ import { SetSelectorComponent } from './set-selector/set-selector.component';
     declarations: [
         CardEditorComponent,
         EditorComponent,
+        EditorTutorialComponent,
         TargeterEditorComponent,
         MechanicEditorComponent,
         EditorListComponent,

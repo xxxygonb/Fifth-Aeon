@@ -1,0 +1,142 @@
+<div class="tutorial-page">
+    <h1>卡牌添加教程</h1>
+    <p class="lead">
+        本教程面向想自制卡牌的玩家。读完你就能用编辑器拼出一张完整的卡牌；想深入机制开发时，可参考项目中的
+        <code>docs/CARD_CREATION_GUIDE_CN.md</code>。
+    </p>
+
+    <h2>一、一张卡牌由什么组成？</h2>
+    <svg viewBox="0 0 640 200" class="tutorial-svg" role="img">
+        <rect x="10" y="30" width="150" height="140" rx="8" fill="#fdf6e3" stroke="#586e75" stroke-width="2"/>
+        <circle cx="35" cy="55" r="16" fill="#2aa198"/>
+        <text x="35" y="60" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">费</text>
+        <text x="85" y="60" text-anchor="middle" font-size="13">卡牌名称</text>
+        <rect x="25" y="80" width="120" height="50" fill="#eee8d5" stroke="#93a1a1"/>
+        <text x="85" y="100" text-anchor="middle" font-size="11" fill="#586e75">效果文本</text>
+        <text x="85" y="116" text-anchor="middle" font-size="10" fill="#93a1a1">= 机制列表自动生成</text>
+        <text x="40" y="160" font-size="11">攻击力 / 生命</text>
+        <circle cx="135" cy="155" r="13" fill="#cb4b16"/>
+        <text x="135" y="160" text-anchor="middle" fill="#fff" font-size="12">数</text>
+        <text x="185" y="105" font-size="20" fill="#93a1a1">=</text>
+        <rect x="210" y="30" width="120" height="140" rx="8" fill="#e8f1fd" stroke="#3f7fd6" stroke-width="2"/>
+        <text x="270" y="60" text-anchor="middle" font-size="13" font-weight="bold">费用 Resource</text>
+        <text x="270" y="85" text-anchor="middle" font-size="11" fill="#586e75">能量 + 阵营资源需求</text>
+        <text x="270" y="110" text-anchor="middle" font-size="11" fill="#586e75">（生长/凋零/新生/合成）</text>
+        <rect x="250" y="125" width="40" height="22" rx="4" fill="#2aa198"/>
+        <text x="270" y="140" text-anchor="middle" fill="#fff" font-size="11">数字</text>
+        <text x="355" y="105" font-size="20" fill="#93a1a1">+</text>
+        <rect x="380" y="30" width="250" height="140" rx="8" fill="#fdf0ed" stroke="#cb4b16" stroke-width="2"/>
+        <text x="505" y="55" text-anchor="middle" font-size="13" font-weight="bold">机制列表（核心！）</text>
+        <rect x="395" y="70" width="220" height="28" rx="4" fill="#fff"/>
+        <text x="403" y="88" font-size="11">效果 DealDamage · 3 点伤害</text>
+        <rect x="395" y="102" width="220" height="28" rx="4" fill="#fff"/>
+        <text x="403" y="120" font-size="11">触发 Dawn · 回合开始时</text>
+        <text x="403" y="148" font-size="10" fill="#93a1a1">每个机制 = 做什么 + 何时 + 对谁</text>
+    </svg>
+
+    <h2>二、三个核心概念</h2>
+    <table class="t-table">
+        <tr><th>概念</th><th>回答的问题</th><th>举例</th></tr>
+        <tr><td>机制（效果）</td><td>做什么？</td><td>造成伤害、召唤单位、抽牌、给目标 +1/+1</td></tr>
+        <tr><td>触发时机</td><td>什么时候生效？</td><td>打出时（默认）、死亡时、回合开始时…</td></tr>
+        <tr><td>目标选择</td><td>对谁生效？</td><td>自身、一个敌方单位、友方全体…</td></tr>
+    </table>
+
+    <h2>三、费用与资源</h2>
+    <p>费用 = <b>能量</b>（通用）+ <b>阵营资源需求</b>（要求你已拥有对应阵营的资源，四项总和上限 6 点）。</p>
+    <table class="t-table">
+        <tr><th>阵营</th><th>颜色倾向</th><th>典型主题</th></tr>
+        <tr><td>生长 Growth</td><td>绿色</td><td>自然、野兽、成长协同</td></tr>
+        <tr><td>凋零 Decay</td><td>暗紫</td><td>亡灵、中毒、变形、墓地</td></tr>
+        <tr><td>新生 Renewal</td><td>浅蓝</td><td>治疗、飞行、附魔</td></tr>
+        <tr><td>合成 Synthesis</td><td>灰蓝</td><td>机械、间谍、复制</td></tr>
+    </table>
+
+    <h2>四、四种卡牌类型</h2>
+    <table class="t-table">
+        <tr><th>类型</th><th>特有属性</th><th>说明</th></tr>
+        <tr><td>单位 Unit</td><td>攻击力 / 生命 / 种族</td><td>场上作战主力，最多数量受卡组规则限制</td></tr>
+        <tr><td>法术 Spell</td><td>—</td><td>打出即结算，无实体留场</td></tr>
+        <tr><td>附魔 Enchantment</td><td>力量 / 充能费用</td><td>挂在场上持续生效，力量可被双方增减（博弈点）</td></tr>
+        <tr><td>物品 Item</td><td>攻击加成 / 生命加成 / 装备目标</td><td>装备给某个单位，随单位存亡</td></tr>
+    </table>
+
+    <h2>五、种族 UnitType</h2>
+    <p>
+        共 21 种：人形（人类/牧师/士兵/邪教徒/密探/吸血鬼）、自然（狼/蜘蛛/蛇/猛兽/昆虫/飞鸟/巨龙）、异类（怪物/恶魔/元素/亡灵）、机械（机械偶/建筑/载具）等。
+        种族会被「指定种族目标器」「统领光环」「入场协同」等机制引用；
+        <b>机械偶/建筑/载具属于机械体</b>——免疫中毒与催眠，且不被“生物限定”效果选中。
+    </p>
+
+    <h2>六、目标选择速查</h2>
+    <table class="t-table">
+        <tr><th>类别</th><th>常用目标器</th></tr>
+        <tr><td>单体</td><td>一个敌方单位 / 一个友方单位 / 任意单个单位（可设“可选”）</td></tr>
+        <tr><td>自身</td><td>自身（这张卡）</td></tr>
+        <tr><td>群体</td><td>所有单位（双方）/ 其他所有单位 / 友方全体 / 敌方全体 / 所有单位与玩家</td></tr>
+        <tr><td>玩家</td><td>这张卡的拥有者 / 对手玩家 / 双方玩家</td></tr>
+        <tr><td>条件筛选</td><td>生物单位 / 机械单位 / 指定种族的单位 / 拥有指定能力的单位 / 已受伤的单位 / 攻击力为 0 的单位 / 可被中毒的单位 / 所有附魔</td></tr>
+        <tr><td>特殊</td><td>触发事件的单位（配合事件触发）/ 无目标</td></tr>
+    </table>
+    <p class="t-note">完整列表与说明：编辑器中任意「目标选择」下拉框，每个选项都带说明文字。</p>
+
+    <h2>七、触发时机速查</h2>
+    <table class="t-table">
+        <tr><th>触发</th><th>说明</th><th>触发</th><th>说明</th></tr>
+        <tr><td>打出</td><td>这张牌被打出时</td><td>亡语</td><td>此单位死亡时</td></tr>
+        <tr><td>共鸣</td><td>首次召唤同种族单位时</td><td>亡魂收割</td><td>任意其他单位死亡时</td></tr>
+        <tr><td>黎明</td><td>你的回合开始时</td><td>黄昏</td><td>你的回合结束时</td></tr>
+        <tr><td>循环</td><td>每个回合结束时</td><td>宁静</td><td>回合结束且未攻击时</td></tr>
+        <tr><td>致命一击</td><td>造成致命伤害后</td><td>你被攻击时</td><td>持有者被攻击</td></tr>
+        <tr><td>你抽到单位牌时</td><td>持有者抽到单位</td><td>单位/友方/生物/机械入场</td><td>入场联动</td></tr>
+    </table>
+
+    <h2>八、常用机制速查（按意图查找）</h2>
+    <p>在编辑器「现有机制」的搜索框直接输入关键字（如“伤害”“召唤”）即可过滤，以下是按意图整理的索引：</p>
+    <table class="t-table">
+        <tr><th>我想…</th><th>可用的机制</th></tr>
+        <tr><td>造成伤害</td><td>造成伤害 · 撕咬（伤害并回血）· 按资源伤害 · 阻挡反击 · 击杀召唤</td></tr>
+        <tr><td>增减属性</td><td>属性增益 · 统领光环（各种族变体）· 力量转属性</td></tr>
+        <tr><td>召唤场面</td><td>召唤单位 · 按墓地召唤 · 受击召唤 · 附魔召唤</td></tr>
+        <tr><td>控制与移除</td><td>消灭 · 湮灭 · 心灵控制 · 催眠 · 囚禁 · 洗回牌库 · 墓地复活</td></tr>
+        <tr><td>手牌与资源</td><td>抽牌 · 窥视 · 弃牌 · 受伤弃牌 · 获得资源 · 占卜</td></tr>
+        <tr><td>关键词能力</td><td>飞行 · 远程 · 水栖 · 突进 · 致命 · 生命窃取 · 护盾 · 不死 · 无情 · 剧毒 · 免疫中毒 · 机械体…（可被「授予能力」赋予其他单位）</td></tr>
+        <tr><td>附魔专属</td><td>力场 · 完全格挡 · 死亡计数 · 力量增减 · 不可强化/削弱 · 吸取力量</td></tr>
+        <tr><td>特殊规则</td><td>高生命获胜 · 受击变形 · 憎恶吞噬 · 蛛网缠身 · 不能阻挡</td></tr>
+    </table>
+    <p class="t-note">每个机制在下拉框与搜索结果里都带一句话说明；想看实现细节请阅读 <code>Fifth-Aeon-Model/cards/mechanics/</code> 源码。</p>
+
+    <h2>九、效果文本是怎么生成的</h2>
+    <p>你不需要手写效果描述——文本由机制列表自动拼装。以“狼崽”为例：</p>
+    <pre class="t-code">new BuffTarget(0, 1)           ← 效果：给目标 +0/+1
+   .setTrigger(new Affinity()) ← 时机：首次召唤同种族单位时
+（目标器 SelfTarget）          ← 对象：此单位</pre>
+    <p>生成描述：「<b>共鸣</b>：令此单位获得 0/+1。」触发一次后，该句会以灰色显示表示已失效。</p>
+    <p>文本中的两种特殊标记（机制源码里使用，编辑器无需手写）：</p>
+    <table class="t-table">
+        <tr><th>标记</th><th>用途</th></tr>
+        <tr><td><code>[dynamic](n)[/dynamic]</code></td><td>随局面变化的数值（如墓地单位数），渲染为高亮数字</td></tr>
+        <tr><td><code>[depleted]X[/depleted]</code></td><td>触发后已失效的段落，渲染为灰色</td></tr>
+    </table>
+
+    <h2>十、实战流程与自查</h2>
+    <table class="t-table">
+        <tr><th>步骤</th><th>操作</th></tr>
+        <tr><td>1</td><td>编辑器列表页点 ➕ 新建卡牌</td></tr>
+        <tr><td>2</td><td>填名称、类型、费用、属性（注意阵营需求总和 ≤ 6）</td></tr>
+        <tr><td>3</td><td>「现有机制」搜索添加效果，逐条设置触发时机、目标、参数</td></tr>
+        <tr><td>4</td><td>看右侧「卡牌预览」的效果文本是否符合预期（文本由机制自动生成）</td></tr>
+        <tr><td>5</td><td>保存后开一局 AI 对局实测；卡牌 ID 保持唯一且不再修改</td></tr>
+    </table>
+
+    <h2>十一、常见问题</h2>
+    <table class="t-table">
+        <tr><th>问题</th><th>解答</th></tr>
+        <tr><td>多个机制的执行顺序？</td><td>列表从上到下依次结算，用 ↑↓ 按钮调整</td></tr>
+        <tr><td>「沿用卡牌自身的目标」是什么？</td><td>该效果使用卡牌打出时指定的目标（卡牌左上目标器），例如“对一个敌方单位造成伤害”的法术</td></tr>
+        <tr><td>阵营需求为什么加不满？</td><td>四项需求总和上限 6 点（界面限制），超出部分会被拦截</td></tr>
+        <tr><td>卡牌重名会怎样？</td><td>内部 ID 唯一即可正常游玩；但为避免翻译与检索混乱，建议名称不重复</td></tr>
+        <tr><td>想要全新的效果？</td><td>需要开发新机制（TypeScript）。进阶指引见项目 <code>docs/CARD_CREATION_GUIDE_CN.md</code> 第 10 节：机制继承体系、事件系统与自定义关键词</td></tr>
+        <tr><td>给单位加“飞行”这样的关键词？</td><td>直接在机制里添加 Flying 等被动机制；或用「授予能力」把关键词给别的单位</td></tr>
+    </table>
+</div>

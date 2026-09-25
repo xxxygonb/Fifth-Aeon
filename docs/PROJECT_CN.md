@@ -154,13 +154,21 @@ npx ng serve              # http://localhost:4200
 | 任务 | 命令 |
 |------|------|
 | 服务器编译 | `cd Fifth-Aeon-Server && npx gulp scripts` |
+| 服务器类型检查 | `cd Fifth-Aeon-Server && npx tsc -p tsconfig.json --noEmit` |
 | 服务器监听改动 | `npx gulp watch`（自动重编译） |
 | 客户端开发服务 | `cd Fifth-Aeon-Web-Client && npx ng serve`（热重载） |
-| 客户端生产构建 | `npx ng build --configuration production` |
-| 服务器测试 | `npm test`（mocha） |
+| 客户端生产构建 | `npx ng build` |
+| 全卡文案验证 | `cd g:\Fifth-Aeon && node scan-all-cards.js`（期望残留 0） |
+| i18n 覆盖检查 | `cd g:\Fifth-Aeon && node check-i18n.js`（期望双 0 缺失） |
+
+> 旧版 `npm test`（mocha + ts-node）因依赖缺失且无测试文件已移除。
 
 - 前端改 TS/HTML/CSS 会热重载；改 `game_model` 同样热重载（它在 src 内）
 - 改服务器 TS 后需重新 `gulp scripts` 并重启 `node dist/index.js`
+
+### 卡牌开发
+
+**添加新卡牌请阅读 [CARD_CREATION_GUIDE_CN.md](./CARD_CREATION_GUIDE_CN.md)**——包含架构总览、费用/种族/目标器/触发器/机制参考手册、自定义机制开发模板、三副本同步与验证清单、常见坑。
 
 ### 关键代码路径
 

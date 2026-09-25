@@ -32,6 +32,7 @@ export enum MessageType {
     GameEvent,
     GameEvents,
     GameAction,
+    ResendGame,
 }
 
 export interface Message {

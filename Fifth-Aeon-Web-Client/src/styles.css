@@ -14,6 +14,13 @@
   font-weight: bold;
 }
 
+/* 编辑器机制/触发/目标下拉面板：加宽以完整显示「名称 · 说明」
+   （Material 14 的 mat-select 面板类是 .mat-select-panel，panelClass 直接挂在本元素上） */
+.mechanic-select-panel {
+  min-width: 640px !important;
+  max-width: 720px !important;
+}
+
 body {
   margin: 0px;
   background-color: #f7f9fc;

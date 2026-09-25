@@ -47,5 +47,8 @@
 
 mat-sidenav-container {
     box-sizing: border-box;
-    min-height: calc(100vh - 64px);
+    /* 固定高度使 mat-sidenav-content 成为真正的滚动容器：
+       内容超高时在此内部滚动，卡牌编辑页右侧预览的 position: sticky
+       才能生效（min-height 时滚动发生在 window，sticky 永不触发） */
+    height: calc(100vh - 64px);
 }

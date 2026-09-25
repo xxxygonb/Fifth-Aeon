@@ -71,6 +71,9 @@ export class Server {
         const disconnectTimeout = 1000 * 60;
         this.messenger.onDisconnect = (token: string) => {
             this.gameQueue.removePrivateGamesFor(token);
+            // 断线时同时移出公共匹配队列，避免幽灵玩家留在队列中
+            // 与真实玩家匹配成一面倒的死局
+            this.gameQueue.removeFromQueue(token);
             const account = this.accounts.get(token);
             if (!account || !account.gameId) {
                 return;
@@ -94,6 +97,19 @@ export class Server {
                 }
             }, disconnectTimeout);
         };
+
+        // Player reconnected (e.g. page refresh) and asks for the current
+        // game state back - replay StartGame plus the full event log.
+        this.messenger.addHandler(MessageType.ResendGame, (msg: Message) => {
+            const acc = this.accounts.get(msg.source);
+            if (!acc || !acc.gameId) {
+                return;
+            }
+            const game = this.games.get(acc.gameId);
+            if (game) {
+                game.resendState(msg.source);
+            }
+        });
 
         this.passMessagesToGames();
         setInterval(this.pruneAccounts.bind(this), cleaningTime);

@@ -1,13 +1,21 @@
 <mat-card>
-    <mat-card-title>{{ 'Mechanics' | tr }}</mat-card-title>
+    <mat-card-title>{{
+        'Existing Mechanics (effects of this card)' | tr
+    }}</mat-card-title>
     <mat-card-content>
+        <p class="mechanic-hint" *ngIf="card.mechanics.length === 0">
+            {{
+                'No mechanics yet. Click the + button below to add one.' | tr
+            }}
+        </p>
         <table>
             <tbody>
                 <tr *ngFor="let data of card.mechanics; let i = index">
                     <td>
                         <mat-form-field>
                             <mat-select
-                                placeholder="{{ 'Mechanic ID' | tr }}"
+                                placeholder="{{ 'Mechanic (effect)' | tr }}"
+                                panelClass="mechanic-select-panel"
                                 [(ngModel)]="data.id"
                                 (selectionChange)="changeMechanic(data, $event)"
                             >
@@ -18,7 +26,7 @@
                                         )
                                     "
                                     [value]="constructor.getId()"
-                                    >{{ constructor.getId() | tr }}</mat-option
+                                    >{{ mechanicLabel(constructor.getId()) }}</mat-option
                                 >
                             </mat-select>
                         </mat-form-field>
@@ -26,13 +34,16 @@
                     <td *ngIf="isTriggered(data)">
                         <mat-form-field>
                             <mat-select
-                                placeholder="{{ 'Trigger ID' | tr }}"
+                                placeholder="{{
+                                    'Trigger (when it resolves)' | tr
+                                }}"
+                                panelClass="mechanic-select-panel"
                                 [(ngModel)]="data.trigger.id"
                             >
                                 <mat-option
                                     *ngFor="let id of getTriggerIds()"
                                     [value]="id"
-                                    >{{ id | tr }}</mat-option
+                                    >{{ triggerLabel(id) }}</mat-option
                                 >
                             </mat-select>
                         </mat-form-field>
@@ -40,16 +51,17 @@
                     <td *ngIf="isTargeted(data)">
                         <mat-form-field>
                             <mat-select
-                                placeholder="{{ 'Targeter ID' | tr }}"
+                                placeholder="{{ 'Target (who it affects)' | tr }}"
+                                panelClass="mechanic-select-panel"
                                 [(ngModel)]="data.targeter.id"
                             >
                                 <mat-option value="Host"
-                                    >{{ 'Use Host Targeter' | tr }}</mat-option
+                                    >{{ 'Use the card target' | tr }}</mat-option
                                 >
                                 <mat-option
                                     *ngFor="let id of getTargeterIds()"
                                     [value]="id"
-                                    >{{ id | tr }}</mat-option
+                                    >{{ targeterLabel(id) }}</mat-option
                                 >
                             </mat-select>
                         </mat-form-field>
@@ -73,7 +85,9 @@
                             mat-icon-button
                             [disabled]="i === 0"
                             (click)="moveUp(i)"
-                            matTooltip="{{ 'Move Up' | tr }}"
+                            matTooltip="{{
+                                'Move up (effects resolve top to bottom)' | tr
+                            }}"
                         >
                             <mat-icon>arrow_upward</mat-icon>
                         </button>
@@ -81,7 +95,10 @@
                             mat-icon-button
                             [disabled]="i === card.mechanics.length - 1"
                             (click)="moveDown(i)"
-                            matTooltip="{{ 'Move Down' | tr }}"
+                            matTooltip="{{
+                                'Move down (effects resolve top to bottom)'
+                                    | tr
+                            }}"
                         >
                             <mat-icon>arrow_downward</mat-icon>
                         </button>
@@ -89,7 +106,7 @@
                             mat-icon-button
                             color="warn"
                             (click)="delete(i)"
-                            matTooltip="{{ 'Delete Mechanic' | tr }}"
+                            matTooltip="{{ 'Delete this mechanic' | tr }}"
                         >
                             <mat-icon>delete</mat-icon>
                         </button>

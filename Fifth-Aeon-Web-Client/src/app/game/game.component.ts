@@ -5,7 +5,7 @@ import {
     transition,
     trigger
 } from '@angular/animations';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { Hotkey, HotkeysService } from 'angular2-hotkeys';
 import { WebClient } from '../client';
@@ -149,11 +149,9 @@ export class GameComponent implements OnInit, OnDestroy {
         this.client.exitGame(false);
     }
 
-    @HostListener('window:beforeunload')
-    public exit() {
-        this.client.exitGame(true);
-        return null;
-    }
+    // 注意：页面刷新/关闭（beforeunload）时不能发送 Quit——
+    // 那会立即终结对局，导致刷新后无法恢复。WebSocket 会随页面卸载
+    // 自动断开，服务器按「断线 60 秒保留对局」处理，期间重连即可恢复。
 
     public openMenu() {
         this.client.openSettings();

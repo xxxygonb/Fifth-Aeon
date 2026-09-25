@@ -2,6 +2,7 @@ import { Account } from "./account";
 import { ErrorType } from "./errors";
 import { tsrvf } from "./i18n-messages";
 import { GameAction, GameActionType } from "./game_model/events/gameAction";
+import { GameSyncEvent } from "./game_model/events/syncEvent";
 import { standardFormat } from "./game_model/gameFormat";
 import { ServerGame } from "./game_model/serverGame";
 import { Message, MessageType } from "./message";
@@ -13,6 +14,8 @@ export class GameServer {
     private playerAccounts: Account[] = [];
     private game: ServerGame;
     private id: string;
+    // 全部已发生事件的日志：玩家刷新/断线重连后据此整局重放恢复状态
+    private eventLog: GameSyncEvent[] = [];
 
     constructor(private messenger: ServerMessenger, private server: Server, id: string, player1: Account, player2: Account) {
         ServerGame.setSeed(Math.random());
@@ -39,6 +42,7 @@ export class GameServer {
                 tsrvf("Cannot take action {action}", { action: GameActionType[action.type] }));
             return;
         }
+        this.eventLog.push(...events);
         for (const account of this.playerAccounts) {
             for (const event of events) {
                 this.messenger.sendMessageTo(MessageType.GameEvent, event, account.token);
@@ -66,11 +70,35 @@ export class GameServer {
         }
 
         const events = this.game.startGame();
+        this.eventLog.push(...events);
         this.playerAccounts.forEach(acc => {
             events.forEach(event => {
                 this.messenger.sendMessageTo(MessageType.GameEvent, event, acc.token);
             });
         });
+    }
+
+    /**
+     * 向一名玩家重发整局游戏：StartGame + 全部历史事件。
+     * 客户端的事件是溯源式的，按顺序重放即可完整重建本地状态。
+     */
+    public resendState(token: string) {
+        const idx = this.playerNum(token);
+        if (idx === -1) {
+            return;
+        }
+        console.log("Resending game state to", this.playerAccounts[idx].username);
+        this.messenger.sendMessageTo(MessageType.StartGame, {
+            playerNumber: idx,
+            gameId: this.id,
+            opponent: this.playerAccounts[1 - idx].username,
+            replay: true,
+        }, token);
+        if (this.eventLog.length > 0) {
+            this.messenger.sendMessageTo(MessageType.GameEvents, this.eventLog, token);
+        }
+        // 回发确认：客户端收到后退出重放模式（恢复提示/音效/动画副作用）
+        this.messenger.sendMessageTo(MessageType.ResendGame, { done: true }, token);
     }
 
     public getName() {

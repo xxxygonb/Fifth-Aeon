@@ -45,6 +45,9 @@ export class GameManager {
 
     private gameType: GameType = GameType.AiGame;
 
+    /** 重放模式：整局历史事件回放期间只同步状态，不触发提示/音效/弹窗 */
+    private replaying = false;
+
     constructor(
         private soundManager: SoundManager,
         private tips: TipService,
@@ -132,6 +135,28 @@ export class GameManager {
         this.game2 = null;
         this.gameModel = null;
         this.ais = [];
+        this.replaying = false;
+    }
+
+    /**
+     * 整局事件重放结束：恢复正常的提示/音效/动画副作用。
+     * 若重放结束时的当前阶段正是需要本地玩家分配伤害的阶段，
+     * 补弹分配窗口（历史中的分配阶段已被跳过）。
+     */
+    public finishReplay() {
+        if (!this.replaying) {
+            return;
+        }
+        this.replaying = false;
+        console.log('[recovery] replay finished');
+        const game = this.game1;
+        if (
+            game &&
+            game.getPhase() === GamePhase.DamageDistribution &&
+            game.isActivePlayer(this.playerNumber)
+        ) {
+            this.createDamageSelectors();
+        }
     }
 
     private stopAI() {
@@ -324,6 +349,14 @@ export class GameManager {
             throw new Error('Games not in progress');
         }
 
+        // 重放历史事件：只同步状态，跳过提示/音效/动画弹窗等副作用
+        if (this.replaying) {
+            this.zone.run(() =>
+                playerGame.syncServerEvent(this.playerNumber, event)
+            );
+            return;
+        }
+
         // The game is being controlled by the player, so display tips and update the game state
         // (otherwise the A.I will manage this so we needn't bother)
         if (this.ais.length < 2) {
@@ -452,8 +485,13 @@ export class GameManager {
     }
 
     /** Starts a multiplayer game */
-    public startMultiplayerGame(playerNumber: number, opponentName: string) {
+    public startMultiplayerGame(
+        playerNumber: number,
+        opponentName: string,
+        replay = false
+    ) {
         this.gameType = GameType.PublicGame;
+        this.replaying = replay;
         this.soundManager.setFactionContext(this.deck.getColors());
         this.ais = [];
         this.gameModel = null;
