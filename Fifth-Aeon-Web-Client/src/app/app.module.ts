@@ -18,13 +18,12 @@ import { CollectionService } from './collection.service';
 import { DailyDialogComponent } from './daily-dialog/daily-dialog.component';
 import { DeckChooserComponent } from './deck-chooser/deck-chooser.component';
 import { DeckEditorComponent } from './deck-editor/deck-editor.component';
+import { DeckImportDialogComponent } from './deck-editor/deck-import-dialog/deck-import-dialog.component';
 import { DeckMetadataDialogComponent } from './deck-metadata-dialog/deck-metadata-dialog.component';
 import { DecksService } from './decks.service';
 import { DraftService } from './draft.service';
 import { DraftComponent } from './draft/draft.component';
-import { EditorModule } from './editor/editor.module';
 import { EndDialogComponent } from './end-dialog/end-dialog.component';
-import { GameModule } from './game/game.module';
 import { GameManager } from './gameManager';
 import { InPlayGuard } from './in-play.guard';
 import { I18nService } from './i18n/i18n.service';
@@ -37,12 +36,12 @@ import { MessengerService } from './messenger.service';
 import { OpenPackComponent } from './open-pack/open-pack.component';
 import { PlayerAvatarComponent } from './player-avatar/player-avatar.component';
 import { Preloader } from './preloader';
+import { QueueComponent } from './queue/queue.component';
 // App Angular Services
 import { SoundManager } from './sound';
 import { TipService } from './tips';
-import { TournamentModule } from './tournament/tournament.module';
-import { AdminModule } from './admin/admin.module';
 import { SettingsModule } from './settings/settings.module';
+import { CardSharedModule } from './shared/card.module';
 import { LocalDataProvider } from './data/local-data-provider';
 import { ServerDataProvider } from './data/server-data-provider';
 import { P2PDialogComponent } from './lobby/p2p-dialog/p2p-dialog.component';
@@ -62,9 +61,11 @@ export function initI18n(i18n: I18nService) {
     declarations: [
         AppComponent,
         LobbyComponent,
+        QueueComponent,
         EndDialogComponent,
         DeckEditorComponent,
         DeckChooserComponent,
+        DeckImportDialogComponent,
         DeckMetadataDialogComponent,
         OpenPackComponent,
         DraftComponent,
@@ -76,13 +77,14 @@ export function initI18n(i18n: I18nService) {
     ],
     entryComponents: [
         EndDialogComponent,
+        DeckImportDialogComponent,
         DeckMetadataDialogComponent,
         DailyDialogComponent,
         P2PDialogComponent
     ],
     imports: [
         BrowserModule,
-        GameModule,
+        CardSharedModule,
         UserModule,
         FormsModule,
         HttpClientModule,
@@ -94,10 +96,7 @@ export function initI18n(i18n: I18nService) {
         MaterialModule,
         Angulartics2Module.forRoot(),
         I18nModule,
-        EditorModule,
-        TournamentModule,
         SettingsModule,
-        AdminModule,
         AppRoutingModule
     ],
     providers: [

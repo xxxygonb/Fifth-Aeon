@@ -60,6 +60,10 @@ export class CombatAnalyzer {
             )
             .filter(blockCombo => blockCombo[1].length > 0);
 
+        if (attackersBlockerCanBlock.length === 0) {
+            return undefined;
+        }
+
         const lastBlocker = attackersBlockerCanBlock.length - 1;
         const highestBlocks = attackersBlockerCanBlock.map(
             combo => combo[1].length
@@ -69,7 +73,40 @@ export class CombatAnalyzer {
 
         let bestScore = -Infinity;
         let bestCombo;
-        while (blockCombination[lastBlocker] < highestBlocks[lastBlocker]) {
+        // 组合空间爆炸防护:全场多单位时 8^7 量级的枚举不可承受,
+        // 超限退化为贪心 —— 每个阻挡者独立选择对己方最有利的单拦目标
+        const totalCombos = highestBlocks.reduce(
+            (acc, count) => acc * (count + 1),
+            1
+        );
+        if (totalCombos > 20000) {
+            return attackersBlockerCanBlock.map(([blocker, options]) => {
+                let best: [Unit, Unit?] = [blocker, undefined];
+                let bestLocal = -Infinity;
+                for (const attacker of options) {
+                    const type = CombatAnalyzer.categorizeBlock(
+                        attacker,
+                        blocker
+                    );
+                    const localScore =
+                        type === BlockOutcome.AttackerDies
+                            ? 100
+                            : type === BlockOutcome.NeitherDies
+                            ? 0
+                            : type === BlockOutcome.BothDie
+                            ? -25
+                            : -100;
+                    if (localScore > bestLocal) {
+                        bestLocal = localScore;
+                        best = [blocker, attacker];
+                    }
+                }
+                return best;
+            });
+        }
+        // 枚举全部"阻挡者→攻击者"分配组合;进位溢出(全部回到未阻挡)
+        // 时枚举完毕 —— 原实现缺少该终止条件,枚举完会死循环
+        while (true) {
             const combo: [Unit, Unit?][] = this.makeCombo(
                 blockCombination,
                 attackersBlockerCanBlock
@@ -82,6 +119,7 @@ export class CombatAnalyzer {
 
             /// Compute the next combo
             let currentDigit = 0;
+            let exhausted = false;
             while (true) {
                 blockCombination[currentDigit]++;
                 if (
@@ -92,6 +130,13 @@ export class CombatAnalyzer {
                 }
                 blockCombination[currentDigit] = notBlocking;
                 currentDigit++;
+                if (currentDigit > lastBlocker) {
+                    exhausted = true;
+                    break;
+                }
+            }
+            if (exhausted) {
+                break;
             }
         }
 

@@ -47,7 +47,8 @@ const loadCard = (
         return () => getDefaultCard(cards, expectedType);
     }
     result = cards.getCard(data);
-    if (result.getCardType() !== expectedType) {
+    // 卡牌列表未加载完成时 getCard 可能查不到，退回默认卡而不是崩溃
+    if (!result || result.getCardType() !== expectedType) {
         return () => getDefaultCard(cards, expectedType);
     }
     const id = result.getDataId();

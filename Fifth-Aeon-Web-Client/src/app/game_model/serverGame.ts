@@ -60,6 +60,13 @@ export class ServerGame extends Game {
         const decks = deckLists.map(deckList => {
             const deck = deckList.toDeck().map(fact => {
                 const card = fact();
+                // 确定性实例 id:实例 id 原为 Math.random 生成,重放
+                // (getReplay 的 seed + actionLog)时新旧实例 id 不一致,
+                // 动作日志里的卡牌引用会全部失效。改为构造序确定性 id
+                // ('c'+序号,与 playGeneratedUnit 的纯数字 token id 错开),
+                // 同种子重放时实例与 id 完全一致,引擎的确定性重放由此成立。
+                card.setId('c' + this.generatedCardId.toString(10));
+                this.generatedCardId++;
                 this.cardPool.set(card.getId(), card);
                 return card;
             });

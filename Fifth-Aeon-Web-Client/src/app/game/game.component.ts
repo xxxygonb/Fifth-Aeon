@@ -146,15 +146,22 @@ export class GameComponent implements OnInit, OnDestroy {
 
     public ngOnDestroy() {
         this.removeHotkeys();
+        // 刷新/关闭时 client.exitGame 内部会跳过 Quit(unloading 标志),
+        // 对局由服务器保留 60 秒,重连后经 ResendGame 自动恢复;
+        // 路由离开(主动退出对局)仍会正常发送 Quit。
         this.client.exitGame(false);
     }
 
-    // 注意：页面刷新/关闭（beforeunload）时不能发送 Quit——
-    // 那会立即终结对局，导致刷新后无法恢复。WebSocket 会随页面卸载
-    // 自动断开，服务器按「断线 60 秒保留对局」处理，期间重连即可恢复。
-
     public openMenu() {
         this.client.openSettings();
+    }
+
+    /** 主动退出对局(确认后):AI 局直接回大厅,联机局发 Quit 结算 */
+    public quitGame() {
+        if (!confirm(this.i18n.tr('Quit confirmation'))) {
+            return;
+        }
+        this.client.quitGame();
     }
 
     public isInHand(card: Card) {

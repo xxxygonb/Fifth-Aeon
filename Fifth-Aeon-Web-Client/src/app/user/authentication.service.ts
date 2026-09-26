@@ -26,6 +26,7 @@ export class AuthenticationService {
     // Shared "restore login state" promise so the many attemptLogin() callers
     // share one server round trip instead of racing each other.
     private initPromise: Promise<boolean> | null = null;
+    private retryNoEarlierThan = 0;
     private redirectTarget = 'lobby';
 
     constructor(private http: HttpClient, private router: Router) { }
@@ -53,6 +54,10 @@ export class AuthenticationService {
      * 登录成功后 resolved 值为 true，且 this.user 已就绪。
      */
     public attemptLogin(): Promise<boolean> {
+        // 上次失败后的 5 秒节流:避免路由守卫高频重试打爆服务器
+        if (this.retryNoEarlierThan > Date.now()) {
+            return Promise.resolve(false);
+        }
         if (!this.initPromise) {
             this.initPromise = this.doAttemptLogin();
         }
@@ -83,10 +88,17 @@ export class AuthenticationService {
                     // 不触发 redirect() 导航（否则会与路由守卫竞争，
                     // 把用户从刷新前的页面拽到 redirectTarget）
                     this.setLogin(res, false);
+                } else {
+                    // 恢复失败(网络抖动/token 失效)不永久缓存:
+                    // 允许下次路由导航时重试(5 秒节流由 retryNoEarlierThan 控制)
+                    this.initPromise = null;
+                    this.retryNoEarlierThan = Date.now() + 5000;
                 }
                 return res !== null;
             });
         } catch (e) {
+            this.initPromise = null;
+            this.retryNoEarlierThan = Date.now() + 5000;
             return Promise.resolve(false);
         }
     }

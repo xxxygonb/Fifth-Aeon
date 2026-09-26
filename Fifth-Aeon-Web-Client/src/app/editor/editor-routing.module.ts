@@ -11,7 +11,8 @@ import { LoggedInGuard } from 'app/login.guard';
 
 const routes: Routes = [
     {
-        path: 'editor',
+        // 懒加载入口由 AppRoutingModule 提供 'editor' 前缀，这里用相对路径
+        path: '',
         component: EditorComponent,
         children: [
             {

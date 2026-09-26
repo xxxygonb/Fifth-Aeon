@@ -87,6 +87,9 @@ export class LobbyComponent implements OnInit {
     public inLobby() {
         return this.client.getState() === ClientState.InLobby;
     }
+    // 排队等待已拆分为独立的 /queue 页(QueueComponent);
+    // 登录/对局恢复由路由守卫(InPlayGuard/LoggedInGuard)统一处理,
+    // 大厅不再承载恢复中间态视图。
 
     @HostListener('window:beforeunload')
     public exit() {

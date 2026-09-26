@@ -764,6 +764,18 @@ public evaluateUnitTarget(source: Card, target: Unit, game: Game, evaluated: Eva
 
 `maybeEvaluate` 用于处理"评估中互相影响"的循环引用，照抄现有机制的用法即可。
 
+### 12.1 AI 决策核心（2026-09 重写）
+
+单机 AI（`Model/ai/defaultAi.ts` + `ai/boardEvaluator.ts`）的决策链路：
+
+- **出牌**：循环式贪心 —— 每轮对"能量 + 颜色需求都满足"的手牌与附魔修改打分（`evaluate` + `evaluateTarget`），执行最高分者后重新评估，直到没有正价值动作。
+- **资源规划**：对四种颜色分别打分（打下后新解锁的手牌价值 + 卡组颜色曲线占比），取最高。
+- **宣攻**：先做斩杀检测（对手无可阻挡者且总攻致死 → 全体宣攻），其余单位按"对手视角能否有利阻挡"决策；Expert 档额外做留防权衡。
+- **阻挡**：`CombatAnalyzer.evaluateAllBlocks` 枚举全部"阻挡者→攻击者"分配组合（组合空间超 2 万时退化为贪心），按 `BoardEvaluator` 场面价值取最优 —— 小兵换命（chump block）由评分自然涌现。
+- **难度**：Easy（大噪声+概率失误）/ Medium（轻噪声）/ Hard（满配）/ Expert（满配+留防）四档使用不同决策核心，`aiManager.getLeveledAI()` 按难度分发。
+
+**兼容性承诺**：AI 只通过 `evaluate()` 系列接口读卡牌 —— 新卡实现本节规范后自动接入全部决策，无需改 AI 代码。
+
 ## 13. 图片资源
 
 - 卡面图片存放在 **Web-Client** 的 `src/assets/png/`（如 `wolf-head.png`、`beech.png`）。

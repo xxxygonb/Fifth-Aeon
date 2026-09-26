@@ -39,6 +39,8 @@ export const zhCNServer: Record<string, string> = {
     'No such account': '账号不存在',
     'Incorrect password': '密码错误',
     'Reset email sent': '重置邮件已发送',
+    'Password reset token required': '需要有效的密码重置令牌。',
+    'Too many requests, please try again later': '请求过于频繁，请稍后再试。',
     'Authentication model is not connected to a server instance.':
         '身份验证模块未连接到服务器实例。',
 
@@ -56,6 +58,7 @@ export const zhCNServer: Record<string, string> = {
 
     // ---- routes/tournament.routes.ts -----------------------------------------
     'No such submission.': '没有该提交。',
+    'No submission file provided.': '未提供提交文件。',
 
     // ---- models/tournament.model.ts -------------------------------------------
     // (keys are the English source strings verbatim, typos included)

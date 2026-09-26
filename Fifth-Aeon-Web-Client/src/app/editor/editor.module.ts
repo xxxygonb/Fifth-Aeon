@@ -1,11 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { GameModule } from '../game/game.module';
+import { CardSharedModule } from '../shared/card.module';
 import { I18nModule } from '../i18n/i18n.module';
 import { MaterialModule } from '../material.module';
 import { CardEditorComponent } from './card-editor/card-editor.component';
-import { EditorDataService } from './editor-data.service';
 import { EditorListComponent } from './editor-list/editor-list.component';
 import { EditorRoutingModule } from './editor-routing.module';
 import { EditorComponent } from './editor.component';
@@ -17,6 +16,8 @@ import { SetEditorComponent } from './set-editor/set-editor.component';
 import { SetCardsEditorComponent } from './set-cards-editor/set-cards-editor.component';
 import { SetSelectorComponent } from './set-selector/set-selector.component';
 
+// 懒加载模块：卡牌编辑器。EditorDataService 改为 providedIn: 'root'
+// （DecksService 等急加载服务也依赖它）。
 @NgModule({
     imports: [
         CommonModule,
@@ -24,7 +25,7 @@ import { SetSelectorComponent } from './set-selector/set-selector.component';
         ReactiveFormsModule,
         MaterialModule,
         EditorRoutingModule,
-        GameModule,
+        CardSharedModule,
         I18nModule
     ],
     declarations: [
@@ -39,7 +40,6 @@ import { SetSelectorComponent } from './set-selector/set-selector.component';
         SetCardsEditorComponent,
         SetSelectorComponent
     ],
-    exports: [],
-    providers: [EditorDataService]
+    exports: []
 })
 export class EditorModule {}

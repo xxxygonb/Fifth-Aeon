@@ -1,0 +1,27 @@
+<h1 mat-dialog-title>{{ 'Import Deck' | tr }}</h1>
+
+<div mat-dialog-content>
+    <p>{{ 'Copy paste the deck code here.' | tr }}</p>
+    <mat-form-field>
+        <textarea
+            matInput
+            name="deckCode"
+            [(ngModel)]="code"
+            rows="10"
+            cols="50"
+            spellcheck="false"
+        ></textarea>
+    </mat-form-field>
+</div>
+
+<div mat-dialog-actions>
+    <button mat-button mat-dialog-close>{{ 'Cancel' | tr }}</button>
+    <button
+        mat-raised-button
+        color="primary"
+        [mat-dialog-close]="code"
+        [disabled]="!code"
+    >
+        {{ 'Import' | tr }}
+    </button>
+</div>

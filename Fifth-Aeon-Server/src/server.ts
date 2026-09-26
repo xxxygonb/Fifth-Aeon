@@ -26,6 +26,15 @@ import { adminRouter } from "./routes/admin.routes";
 // 1 hour
 const cleaningTime = 1000 * 60 * 60;
 
+function isLocalRequest(req: express.Request): boolean {
+    const remote = req.socket ? req.socket.remoteAddress : "";
+    return (
+        remote === "127.0.0.1" ||
+        remote === "::1" ||
+        remote === "::ffff:127.0.0.1"
+    );
+}
+
 /**
  * Server that holds references to all the components of the app
  *
@@ -119,7 +128,9 @@ export class Server {
         await startDB();
         authenticationModel.setServer(this);
         this.app.use(cors());
-        this.app.use(morgan("dev"));
+        this.app.use(
+            morgan(process.env.NODE_ENV === "production" ? "combined" : "dev")
+        );
         this.app.use("/api/auth", authRoutes);
         this.app.use("/api/availability", availabilityRoutes);
         this.app.use("/api/cards", cardRoutes);
@@ -129,6 +140,12 @@ export class Server {
         this.app.use("/api/admin", adminRouter);
 
         this.app.get("/report", (req, res) => {
+            // Ops health endpoint: counts and memory only, and only for
+            // local monitoring - it used to list usernames publicly.
+            if (!isLocalRequest(req)) {
+                res.status(403).send("Forbidden");
+                return;
+            }
             res.send(this.getReport());
         });
         this.app.use(this.expressErrorHandler as any);
@@ -178,8 +195,8 @@ export class Server {
 
     private getReport() {
         return {
-            users: Array.from(this.accounts.values()).map(acc => acc.username),
-            games: Array.from(this.games.values()).map(game => game.getName()),
+            users: this.accounts.size,
+            games: this.games.size,
             queue: this.gameQueue.getPlayersInQueue(),
             memory: {
                 server: process.memoryUsage(),

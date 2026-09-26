@@ -38,6 +38,10 @@ export const zhCNUI: Record<string, string> = {
     'Admin Panel': '管理面板',
     'Logout': '退出登录',
     'In Queue. Waiting for an opponent.': '排队中，正在等待对手。',
+    'Game not available. Back to lobby.': '对局不可用，已返回大厅。',
+    'Quit Game': '退出对局',
+    'Quit confirmation': '确定要退出当前对局吗？联机对局退出后将判负。',
+    'Restoring session...': '正在恢复会话…',
 
     // Initial setup
     'Initial Settings': '初始设置',

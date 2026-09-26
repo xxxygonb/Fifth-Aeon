@@ -20,7 +20,9 @@ interface TextElement {
     y: number;
 }
 
-@Injectable()
+// providedIn root：GameManager 等急加载服务注入了本服务，
+// 且 GameModule 现为懒加载模块，不能承载它的 Provider。
+@Injectable({ providedIn: 'root' })
 export class OverlayService {
     public static arrowTimer = 2000;
     public static cardTimer = 3500;

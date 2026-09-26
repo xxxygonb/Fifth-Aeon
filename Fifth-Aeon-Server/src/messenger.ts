@@ -14,6 +14,13 @@ export class ServerMessenger {
             console.error("Server Websocket Error:\n", err);
         });
         this.ws.on("connection", ws => {
+            // Heartbeat bookkeeping: a connection that fails to answer pings
+            // is terminated below, so half-open sockets (crashed client, lost
+            // network) cannot hold games hostage until the hourly prune.
+            (ws as any).isAlive = true;
+            ws.on("pong", () => {
+                (ws as any).isAlive = true;
+            });
             ws.on("message", data => {
                 const msg = JSON.parse(data.toString()) as Message;
                 this.connections.set(msg.source, ws);
@@ -34,6 +41,18 @@ export class ServerMessenger {
             this.checkQueue(msg.source)
         );
         this.addHandler(MessageType.Ping, msg => null);
+
+        const heartbeatInterval = 30 * 1000;
+        setInterval(() => {
+            this.ws.clients.forEach((client: any) => {
+                if (client.isAlive === false) {
+                    client.terminate();
+                    return;
+                }
+                client.isAlive = false;
+                client.ping();
+            });
+        }, heartbeatInterval);
     }
 
     private ws: WebSocket.Server;
@@ -101,7 +120,7 @@ export class ServerMessenger {
         data: string | object,
         ws: WebSocket
     ): boolean {
-        if (ws.readyState !== ws.OPEN) {
+        if (ws.readyState !== WebSocket.OPEN) {
             return false;
         }
         ws.send(this.makeMessage(messageType, data));

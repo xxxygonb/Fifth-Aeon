@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { EditorDataService } from '../editor-data.service';
 import { AuthenticationService } from 'app/user/authentication.service';
 import { SetInformation } from 'app/game_model/cardSet';
@@ -39,4 +39,12 @@ export class SetEditorComponent implements OnInit {
 
 
     ngOnInit() {}
+
+    /** 任意编辑交互都置脏标记，驱动 10 秒自动保存 */
+    @HostListener('input')
+    @HostListener('change')
+    @HostListener('click')
+    public onEditorActivity() {
+        this.editorData.markDirty();
+    }
 }

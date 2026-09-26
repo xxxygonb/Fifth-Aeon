@@ -64,6 +64,16 @@
             >
                 <mat-icon>menu</mat-icon>
             </button>
+            <button
+                matTooltipPosition="below"
+                [matTooltip]="'Quit Game' | tr"
+                color="warn"
+                class="menu-button"
+                (click)="quitGame()"
+                mat-mini-fab
+            >
+                <mat-icon>logout</mat-icon>
+            </button>
         </div>
 
         <ccg-overlay></ccg-overlay>

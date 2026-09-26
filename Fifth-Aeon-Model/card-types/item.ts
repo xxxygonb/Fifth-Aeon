@@ -1,5 +1,6 @@
 import { CardType, GameZone } from './card';
 import { Game } from '../game';
+import { tf } from '../i18n';
 import { EvalContext, Mechanic, TriggeredMechanic, EvalMap } from '../mechanic';
 import { Permanent } from './permanent';
 import { Resource } from '../resource';
@@ -75,7 +76,9 @@ export class Item extends Permanent {
 
     public getText(game: Game | undefined = undefined, hasPrefix: boolean = true): string {
         const prefix = hasPrefix
-            ? `Attaches to ${this.hostTargeter.getTextOrPronoun()}. `
+            ? tf('Attaches to {target}. ', {
+                  target: this.hostTargeter.getTextOrPronoun()
+              })
             : '';
         return prefix + super.getText(game);
     }

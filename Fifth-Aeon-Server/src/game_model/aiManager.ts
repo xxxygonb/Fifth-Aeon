@@ -1,4 +1,7 @@
 import { DefaultAI } from './ai/defaultAi';
+import { EasyAI } from './ai/easyAi';
+import { ExpertAI } from './ai/expertAi';
+import { MediumAI } from './ai/mediumAi';
 import { AIConstructor } from './ai/aiList';
 import { DeckList } from './deckList';
 import { decksByLevel, DifficultyLevel } from './scenarios/decks';
@@ -99,6 +102,11 @@ class AIManager {
         return this.autoDifficulty;
     }
 
+    /** 解析后的实际难度(Dynamic 会按胜率落到具体档位;快照持久化用) */
+    public getConcreteDifficulty(): ConcreteDifficulty {
+        return this.getCurrentDifficulty();
+    }
+
     public getLeveledOpponent() {
         return {
             ai: this.getLeveledAI(),
@@ -106,8 +114,28 @@ class AIManager {
         };
     }
 
+    /**
+     * 2026-09:难度真正生效 —— 不同难度使用不同决策核心
+     * (旧实现恒返回 DefaultAI,难度只体现在卡组上):
+     * Easy = 大噪声 + 概率失误;Medium = 轻噪声;
+     * Hard = 满配决策核心;Expert = 满配 + 留防权衡。
+     */
     private getLeveledAI(): AIConstructor {
-        return DefaultAI;
+        return this.getLeveledAIFor(this.getCurrentDifficulty());
+    }
+
+    /** 按指定难度取 AI 构造器(快照恢复用:难度随快照持久化) */
+    public getLeveledAIFor(difficulty: ConcreteDifficulty): AIConstructor {
+        switch (difficulty) {
+            case DifficultyLevel.Easy:
+                return EasyAI;
+            case DifficultyLevel.Medium:
+                return MediumAI;
+            case DifficultyLevel.Hard:
+                return DefaultAI;
+            case DifficultyLevel.Expert:
+                return ExpertAI;
+        }
     }
 
     public getLeveledDeck(): DeckList {

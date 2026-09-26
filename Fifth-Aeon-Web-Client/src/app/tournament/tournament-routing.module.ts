@@ -10,7 +10,8 @@ import { PrizesComponent } from './prizes/prizes.component';
 
 const routes: Routes = [
     {
-        path: 'tournament',
+        // 懒加载入口由 AppRoutingModule 提供 'tournament' 前缀，这里用相对路径
+        path: '',
         component: TournamentComponent,
         children: [
             { path: '', component: TournamentHelpComponent },

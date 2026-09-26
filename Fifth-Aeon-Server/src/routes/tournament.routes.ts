@@ -83,6 +83,12 @@ router.post(
     async (req, res, next) => {
         try {
             const user: UserData = (req as any).user;
+            if (!req.file) {
+                res.status(400).json({
+                    message: tsrv("No submission file provided.")
+                });
+                return;
+            }
             await tournamentModel.addSubmission(user, req.file);
             res.json({ message: tsrv("done") });
         } catch (e) {

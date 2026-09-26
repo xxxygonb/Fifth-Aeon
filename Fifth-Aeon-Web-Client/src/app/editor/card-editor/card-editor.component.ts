@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import {
     cardList,
     CardData,
@@ -17,7 +17,7 @@ import { mechanicList } from '../../game_model/cards/mechanicList';
     templateUrl: './card-editor.component.html',
     styleUrls: ['./card-editor.component.scss']
 })
-export class CardEditorComponent implements OnInit {
+export class CardEditorComponent implements OnInit, OnDestroy {
     private static MaxRequirementTotal = 6;
 
     public unitTypes = UnitType;
@@ -35,12 +35,15 @@ export class CardEditorComponent implements OnInit {
     /** 保存按钮状态：idle | saving | saved | error */
     public saveState: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
 
+    /** 卡面预览自动刷新定时器（离开页面必须清理，否则会叠加常驻定时器） */
+    private previewInterval: any;
+
     constructor(
         route: ActivatedRoute,
         router: Router,
         private editorData: EditorDataService
     ) {
-        setInterval(() => this.refreshPreview(), 3000);
+        this.previewInterval = setInterval(() => this.refreshPreview(), 3000);
         route.paramMap.subscribe(params => {
             const id = params.get('id') as string;
             const card = editorData.getCard(id);
@@ -124,4 +127,19 @@ export class CardEditorComponent implements OnInit {
     }
 
     ngOnInit() {}
+
+    ngOnDestroy() {
+        if (this.previewInterval) {
+            clearInterval(this.previewInterval);
+            this.previewInterval = null;
+        }
+    }
+
+    /** 任意编辑交互（含子编辑器组件冒泡的 input/change/按钮点击）都置脏标记 */
+    @HostListener('input')
+    @HostListener('change')
+    @HostListener('click')
+    public onEditorActivity() {
+        this.editorData.markDirty();
+    }
 }

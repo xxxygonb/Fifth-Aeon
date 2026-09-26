@@ -1,19 +1,19 @@
-import { maxBy, meanBy, minBy, remove, sortBy, sumBy, take } from 'lodash';
-import { knapsack, KnapsackItem } from '../algorithms';
+import { maxBy, meanBy, sortBy, sumBy, take } from 'lodash';
 import { Card, CardType } from '../card-types/card';
 import { Enchantment } from '../card-types/enchantment';
 import { Item } from '../card-types/item';
 import { Unit, isUnit } from '../card-types/unit';
 import { TransformDamaged } from '../cards/mechanics/decaySpecials';
-import { Flying, Lethal, Shielded } from '../cards/mechanics/skills';
+import { Lethal, Shielded } from '../cards/mechanics/skills';
 import { ClientGame } from '../clientGame';
 import { DeckList } from '../deckList';
 import { GamePhase } from '../game';
-import { EvalContext } from '../mechanic';
+import { EvalContext, EvalMap } from '../mechanic';
 import { Player } from '../player';
 import { Resource, ResourceTypeNames } from '../resource';
 import { AI } from './ai';
 import { aiList } from './aiList';
+import { BoardEvaluator } from './boardEvaluator';
 import { DeckBuilder } from './deckBuilder';
 import { RandomBuilder } from './randomBuilder';
 import { ChoiceHeuristic } from './heuristics';
@@ -41,12 +41,14 @@ interface EvaluatedAction {
  * It is built on heuristics and does not use any tree search based algorithm.
  * As such, it runs quite fast but is prone to making short sighted moves.
  *
- * Known Flaws
- * - Doesn't currently consider the value of enchantments when empowering them (only their cost)
- * - Doesn't currently take most global effects into play such as the effect of Death's Ascendence
- *   (which makes it pointless to play certain units as they will die instantly)
- * - See documentation of attack and block methods for weaknesses in attack/blocking logic
+ * 决策核心(2026-09 重写):
+ * - selectActions:循环式贪心执行(非自递归),颜色/能量双重可行性过滤
+ * - attack:斩杀检测(对手无可阻挡者且总攻致死时全体宣攻)+ 对手最优阻挡模型
+ * - block:CombatAnalyzer.evaluateAllBlocks 全局枚举阻挡组合,
+ *   以 BoardEvaluator 场面价值取最优(小兵换命等权衡自然涌现)
+ * - 资源规划:按"新解锁手牌价值 + 卡组颜色曲线"对每种颜色打分
  *
+ * 兼容性:所有评估只调用卡牌既有的 evaluate() 接口,新卡零成本接入。
  */
 export class DefaultAI extends AI {
     protected enemyNumber: number;
@@ -129,27 +131,43 @@ export class DefaultAI extends AI {
         );
     }
 
+    /** 安全评估:个别机制的 evaluate 存在自引用递归(引擎已知问题,
+     * 原实现同样依赖 try/catch 幸存),失败时返回 0 分。 */
+    protected safeEvaluate(card: Card): number {
+        try {
+            return card.evaluate(this.game, EvalContext.Play, new Map());
+        } catch (e) {
+            return 0;
+        }
+    }
+
     /** Decides which cards of a set to replace.
-     * We replace a card if we think it is worse than the average card in our deck based on the card draw heuristic. */
+     * 2026-09 升级(P1-8):替换"强度"低于卡组平均强度的可选牌,
+     * 强度 = evaluate 价值 − 费用(原实现仅按费用差排序,会换掉
+     * 便宜的低费曲线卡)。强制替换(min 张)仍取最弱者。 */
     protected evaluateToReplace(
         choices: Card[],
         min: number,
         max: number
     ): Card[] {
-        const worst = sortBy(choices, card => -this.cardDrawHeuristic(card));
-        const mandatory = take(worst, min);
-        let optional = worst.slice(min);
+        const strength = (card: Card) =>
+            this.safeEvaluate(card) - card.getCost().getNumeric();
+        const weakest = sortBy(choices, strength);
+        const mandatory = take(weakest, min);
+        const optional = weakest.slice(min);
         if (optional.length > 0) {
             const average = meanBy(
                 this.deck.getUniqueCards(),
-                this.cardDrawHeuristic.bind(this)
+                strength.bind(this)
             );
-            optional = optional.filter(
-                card => this.cardDrawHeuristic(card) > average
+            const replaceable = optional.filter(
+                card => strength(card) < average
             );
-            optional = sortBy(optional, this.cardDrawHeuristic.bind(this));
+            return mandatory.concat(
+                take(sortBy(replaceable, strength), max - mandatory.length)
+            );
         }
-        return mandatory.concat(take(optional, max - mandatory.length));
+        return mandatory;
     }
 
     /** A heuristic that chooses the unit with the highest total stats (all choices must be Units) */
@@ -273,69 +291,89 @@ export class DefaultAI extends AI {
     }
 
     /**
-     * Creates an evaluated action from an enchantment.
+     * Evaluates empowering/diminishing an enchantment.
      *
-     * Currently the score is based on the ratio between the enchantments cost and its power.
-     * @param enchantment - The enchantment to evaluate
+     * 2026-09 重写:分数 = 该附魔机制的真实评估值与修改成本之比,
+     * 取绝对值以同时覆盖"强化我方附魔"与"削弱敌方附魔"两种情形
+     * (原实现为 playCost / (modifyCost * power) 的经验公式)。
      */
     protected evaluateEnchantment(enchantment: Enchantment): EvaluatedAction {
         const modifyCost = enchantment.getModifyCost().getNumeric();
-        const playCost = enchantment.getCost().getNumeric();
+        const me = this.aiPlayer;
+        if (
+            modifyCost > me.getPool().getNumeric() ||
+            !enchantment.canChangePower(me, this.game)
+        ) {
+            return { cost: 0, score: -1 };
+        }
+        const value = Math.abs(
+            enchantment.evaluate(this.game, EvalContext.Play, new Map())
+        );
         return {
             enchantmentTarget: enchantment,
             cost: modifyCost,
-            score: playCost / (modifyCost * enchantment.getPower())
+            score: value / Math.max(modifyCost, 1)
         };
     }
 
     /**
-     * Selects a series of actions to take.
-     * Currently there are two actions, playing a card or modifying an enchantment.
+     * Selects and executes a series of actions (playing cards or
+     * modifying enchantments).
      *
-     * All actions have a energy cost thus to determine which ones to use we compute their heuristic values.
-     * Then we use a knapsack algorithm to get the highest total value of actions with our available energy.
+     * 2026-09 重写(原为 knapsack 选组合后仅执行单张,且自递归易爆栈):
+     * 循环式贪心 —— 每轮评估全部合法动作,执行分数最高者,随后手牌/能量/
+     * 场面已变化,重新评估直到没有正价值的动作。
      *
+     * 可行性双重过滤:能量数值 + 四系颜色需求(原实现只看能量,
+     * 可能选出执行必败的动作白白浪费回合)。
      */
     protected selectActions() {
-        const playableCards = this.aiPlayer
-            .getHand()
-            .filter(card => card.isPlayable(this.game));
-        const modifiableEnchantments = this.getModifiableEnchantments();
-        const energy = this.aiPlayer.getPool().getNumeric();
-        const actions: EvaluatedAction[] = playableCards
-            .map(card => {
+        for (let guard = 0; guard < 12; guard++) {
+            const pool = this.aiPlayer.getPool();
+            const energy = pool.getNumeric();
+            const actions: EvaluatedAction[] = [];
+
+            for (const card of this.aiPlayer.getHand()) {
+                if (!card.isPlayable(this.game)) {
+                    continue;
+                }
+                const cost = card.getCost();
+                if (
+                    cost.getNumeric() > energy ||
+                    !pool.meetsReq(cost)
+                ) {
+                    continue;
+                }
                 try {
-                    return this.evaluateCard(card);
+                    const action = this.evaluateCard(card);
+                    if (action.score > 0) {
+                        actions.push(action);
+                    }
                 } catch (e) {
                     console.error('Error while evaluating', card, 'got', e);
-                    return { score: 0, cost: 0 };
                 }
-            })
-            .concat(
-                modifiableEnchantments.map(enchantment => {
-                    return this.evaluateEnchantment(enchantment);
-                })
-            );
+            }
 
-        const actionsToRun = Array.from(
-            knapsack(
-                energy,
-                actions.map(action => {
-                    return {
-                        w: action.cost,
-                        b: action.score,
-                        data: action
-                    } as KnapsackItem<EvaluatedAction>;
-                })
-            ).set
-        ).map(item => item.data);
+            for (const enchantment of this.getModifiableEnchantments()) {
+                try {
+                    const action = this.evaluateEnchantment(enchantment);
+                    if (action.score > 0) {
+                        actions.push(action);
+                    }
+                } catch (e) {
+                    console.error('Error while evaluating', enchantment, e);
+                }
+            }
 
-        const best = maxBy(actionsToRun, evaluated => evaluated.score);
-        if (best) {
-            this.addActionToSequence(this.selectActions, true);
-            this.addActionToSequence(() => this.runEvaluatedAction(best), true);
+            const best = maxBy(actions, action => action.score);
+            if (!best) {
+                break;
+            }
+            const executed = this.runEvaluatedAction(best);
+            if (executed !== true) {
+                break; // 执行失败立即停止,防止无效循环
+            }
         }
-
         return true;
     }
 
@@ -398,42 +436,6 @@ export class DefaultAI extends AI {
         return best;
     }
 
-    /** Gets the difference in resources (not energy) between two values */
-    protected getReqDiff(current: Resource, needed: Resource) {
-        const diffs = {
-            total: 0,
-            resources: new Map<string, number>()
-        };
-        for (const resourceType of ResourceTypeNames) {
-            diffs.resources.set(
-                resourceType,
-                Math.max(
-                    needed.getOfType(resourceType) -
-                        current.getOfType(resourceType),
-                    0
-                )
-            );
-            const val = diffs.resources.get(resourceType);
-            if (val) {
-                diffs.total += val;
-            }
-        }
-        return diffs;
-    }
-
-    /** Returns the card whose resource pre reqs are not met, but are the closest to being met */
-    protected getClosestUnmetRequirement(cards: Card[]) {
-        return minBy(
-            cards.filter(
-                card =>
-                    this.getReqDiff(this.aiPlayer.getPool(), card.getCost())
-                        .total !== 0
-            ),
-            card =>
-                this.getReqDiff(this.aiPlayer.getPool(), card.getCost()).total
-        );
-    }
-
     /** Computes the most common resource among a set of cards (such as a deck or hand) */
     protected getMostCommonResource(cards: Card[]): string {
         const total = new Resource(0);
@@ -446,38 +448,60 @@ export class DefaultAI extends AI {
     }
 
     /**
-     * Decides what resource to play next based on the following heuristic.
+     * 模拟"下了一块该色资源"之后的资源池:
+     * 能量上限 +1 并回满、该色需求 +1。
+     */
+    protected simulateResource(pool: Resource, type: string): Resource {
+        const types: any = {};
+        for (const t of ResourceTypeNames) {
+            types[t] = pool.getOfType(t);
+        }
+        types[type] = (types[type] || 0) + 1;
+        return new Resource(
+            pool.getMaxNumeric() + 1,
+            pool.getMaxNumeric() + 1,
+            types
+        );
+    }
+
+    /**
+     * Decides what resource to play next.
      *
-     * If the A.I has unplayable cards it in its hand, it looks at its hand and decides which
-     * card it is closest to being able to play but is not yet able to. It chooses a resource
-     * which gets it closer to playing that card.
-     *
-     * Otherwise it applies the same logic, but to its deck list.
-     *
-     * Finally, if it can play every card in its hand and deck, it simply plays the most common resource
-     * in its deck (based on average card cost).
-     *
-     * @returns - The name of the resource to play
+     * 2026-09 重写:对每种颜色打分而非只看"离能打出哪张牌最近"。
+     *  1) 打下它之后新解锁的手牌价值(能量与颜色同时达标的卡的 evaluate 之和)
+     *  2) 卡组中需要该色资源的卡牌占比(长线曲线平滑)
+     * 选得分最高的颜色;无缺口时回退卡组最常见颜色。
      */
     protected getResourceToPlay(): string {
+        const hand = this.aiPlayer.getHand();
         const deckCards = this.deck.getUniqueCards();
-        const closestCardInHand = this.getClosestUnmetRequirement(
-            this.aiPlayer.getHand()
-        );
-        const closestCardInDeck = this.getClosestUnmetRequirement(deckCards);
-        const closestCard = closestCardInHand || closestCardInDeck;
-
-        if (closestCard) {
-            const diff = this.getReqDiff(
-                this.aiPlayer.getPool(),
-                closestCard.getCost()
-            );
-            return maxBy(ResourceTypeNames, type =>
-                diff.resources.get(type)
-            ) as string;
-        } else {
-            return this.getMostCommonResource(deckCards);
+        const pool = this.aiPlayer.getPool();
+        let bestType: string | null = null;
+        let bestScore = -Infinity;
+        for (const type of ResourceTypeNames) {
+            const simulated = this.simulateResource(pool, type);
+            let score = 0;
+            for (const card of hand) {
+                const cost = card.getCost();
+                if (cost.getNumeric() > simulated.getNumeric()) {
+                    continue; // 能量仍不足,下这块资源也无法立即解锁
+                }
+                if (!pool.meetsReq(cost) && simulated.meetsReq(cost)) {
+                    score += Math.max(this.safeEvaluate(card), 1);
+                }
+            }
+            // 长线:卡组中该色的需求占比
+            for (const card of deckCards) {
+                if (card.getCost().getOfType(type) > 0) {
+                    score += 0.3;
+                }
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                bestType = type;
+            }
         }
+        return bestType || this.getMostCommonResource(deckCards);
     }
 
     protected playResource() {
@@ -488,15 +512,14 @@ export class DefaultAI extends AI {
 
     /**
      * Chooses which, if any, units to attack with.
-     * The A.I will choose to attack with any units it would not block if it were the opponent.
-     * That is to say, any unit where the canFavorablyBlock function returns false for all enemy units.
      *
-     * Known Flaws
-     *  - The A.I should attack if it could guarantee lethal damage regardless of trades, but that is not implemented.
-     *  - The A.I should consider potential multi-blocks from the enemy, but it dose not.
-     *  - The A.I should consider whether it is best to leave a unit on defense, even if its a good attacker
-     *    e.g if the enemy has much more life than us and attacking with that unit will give them good attacks.
-     *
+     * 2026-09 增强:
+     * - 斩杀检测(P0-3):对手没有任何未疲惫的潜在阻挡者、且全部攻击伤害
+     *   足以终结对局时,全体宣攻(原实现永远不敢全下)。
+     * - 其余单位沿用"对手视角无法有利阻挡才攻"的对手模型
+     *   (canFavorablyBlock,1v1;多个对手单位联合阻挡的情形见
+     *   block 侧的分组结算,进攻侧联合威胁复杂度高、近似忽略)。
+     * - reserveDefense 钩子(P2):Expert 档可把高价值单位留作防守。
      */
     protected attack() {
         const potentialAttackers = this.game
@@ -508,6 +531,26 @@ export class DefaultAI extends AI {
             .getBoard()
             .getPlayerUnits(this.enemyNumber)
             .filter(unit => !unit.isExhausted());
+        const enemyLife = this.game
+            .getPlayer(this.enemyNumber)
+            .getLife();
+
+        // P0-3 斩杀:对手拦不住任何攻击、且总伤害足以致死时,全体宣攻
+        const totalDamage = sumBy(
+            potentialAttackers,
+            attacker => attacker.getDamage()
+        );
+        const blockable = potentialAttackers.some(attacker =>
+            potentialBlockers.some(blocker =>
+                blocker.canBlockTarget(attacker, true)
+            )
+        );
+        if (!blockable && totalDamage >= enemyLife) {
+            for (const attacker of potentialAttackers) {
+                this.game.declareAttacker(attacker);
+            }
+            return true;
+        }
 
         for (const attacker of potentialAttackers) {
             let hasBlocker = false;
@@ -518,10 +561,21 @@ export class DefaultAI extends AI {
                 }
             }
             if (!hasBlocker) {
+                if (this.reserveDefense(attacker)) {
+                    continue;
+                }
                 this.game.declareAttacker(attacker);
             }
         }
         return true;
+    }
+
+    /**
+     * P2 钩子:是否把该单位留作防守而不宣攻。
+     * DefaultAI(硬/专家难度基类)默认不启用,由难度子类覆写。
+     */
+    protected reserveDefense(attacker: Unit): boolean {
+        return false;
     }
 
     /**
@@ -568,82 +622,144 @@ export class DefaultAI extends AI {
     /**
      * Determines what units should block enemy attackers.
      *
-     * If the enemy attack is potentially lethal, the A.I will focus on minimizing damage in the least disadvantageous way
-     * but it will be willing to sacrifice units to block without trading (chump blocks).
-     *
-     * Otherwise the A.I will only make blocks considered to be favorable by the canFavorablyBlock function.
-     *
-     * Known Flaws
-     *  - The A.I should consider chump blocking if its health is more valuable than the unit it would sacrifice.
-     *  - The A.I should consider multi-blocks, but it dose not.
-     *
+     * 2026-09 重写:
+     * - P0-1 修复:原实现 filter(unit => !unit.canBlock()) 把条件取反,
+     *   筛出的全是无法阻挡的单位,导致 AI 从不声明阻挡者。
+     * - P0-4:用 CombatAnalyzer.evaluateAllBlocks 枚举全部
+     *   "阻挡者→攻击者"分配组合(含多个阻挡者拦同一攻击者、
+     *   放弃拦截保单位等),以我方场面价值取最优。
+     * - "小兵换命"(chump block)由评分自然涌现:挨打的场面价值
+     *   (伤害 × faceDamageWeight)高于牺牲的阻挡者时会被选中。
      */
     protected block() {
-        const attackers = sortBy(
-            this.game.getAttackers(),
-            attacker =>
-                -(
-                    attacker.getDamage() +
-                    (attacker.hasMechanicWithId(Flying.getId()) !== undefined
-                        ? 1000
-                        : 0)
-                )
-        );
         const potentialBlockers = this.game
             .getBoard()
             .getPlayerUnits(this.playerNumber)
-            .filter(unit => !unit.canBlock());
+            .filter(unit => unit.canBlock());
+        const attackers = this.game.getAttackers();
+        if (attackers.length === 0 || potentialBlockers.length === 0) {
+            return true;
+        }
 
-        let totalDamage = sumBy(attackers, attacker => attacker.getDamage());
-        const life = this.aiPlayer.getLife();
-        const blocks = [];
-        for (const attacker of attackers) {
-            const options = [] as {
-                blocker: Unit;
-                attacker: Unit;
-                type: BlockOutcome;
-                tradeScore: number;
-            }[];
-            for (const blocker of potentialBlockers) {
-                if (blocker.canBlockTarget(attacker)) {
-                    options.push({
-                        blocker: blocker,
-                        attacker: attacker,
-                        type: CombatAnalyzer.categorizeBlock(attacker, blocker),
-                        tradeScore:
-                            blocker.evaluate(
-                                this.game,
-                                EvalContext.LethalRemoval,
-                                new Map()
-                            ) -
-                            attacker.evaluate(
-                                this.game,
-                                EvalContext.LethalRemoval,
-                                new Map()
-                            )
-                    });
-                }
+        const best = CombatAnalyzer.evaluateAllBlocks(
+            potentialBlockers,
+            attackers,
+            blocks => this.evaluateBlockPlan(blocks, attackers)
+        );
+        if (!best) {
+            return true;
+        }
+        const actions = best
+            .filter(pair => pair[1] !== undefined)
+            .map(pair => this.makeBlockAction({
+                blocker: pair[0],
+                attacker: pair[1] as Unit
+            }));
+        this.sequenceActions(actions);
+        return true;
+    }
+
+    /** 评估一个阻挡分配方案对我方的价值(越高越好) */
+    protected evaluateBlockPlan(
+        blocks: [Unit, Unit?][],
+        attackers: Unit[]
+    ): number {
+        const incoming = sumBy(
+            attackers,
+            attacker => attacker.getDamage()
+        );
+        const groups = new Map<Unit, Unit[]>();
+        for (const [blocker, attacker] of blocks) {
+            if (!attacker) {
+                continue;
             }
-            const best = minBy(
-                options,
-                option => option.type * 100000 + option.tradeScore
-            );
-            if (
-                best !== undefined &&
-                (totalDamage >= life ||
-                    best.type < BlockOutcome.BothDie ||
-                    (best.type === BlockOutcome.BothDie &&
-                        best.tradeScore <= 0))
-            ) {
-                blocks.push(best);
-                totalDamage -= best.attacker.getDamage();
-                remove(potentialBlockers, unit => unit === best.blocker);
+            const group = groups.get(attacker) || [];
+            group.push(blocker);
+            groups.set(attacker, group);
+        }
+        const evaluated: EvalMap = new Map();
+        let score = 0;
+        let totalFace = 0;
+        for (const attacker of attackers) {
+            const group = groups.get(attacker);
+            const outcome = group
+                ? this.simulateBlockGroup(attacker, group, evaluated)
+                : {
+                      faceDamage: attacker.getDamage(),
+                      killed: [] as Unit[],
+                      attackerDies: false
+                  };
+            totalFace += outcome.faceDamage;
+            if (outcome.attackerDies) {
+                score += BoardEvaluator.unitValue(
+                    attacker,
+                    this.game,
+                    evaluated
+                );
+            }
+            for (const lost of outcome.killed) {
+                score -= BoardEvaluator.unitValue(lost, this.game, evaluated);
             }
         }
-        const actions = blocks.map(block => {
-            return this.makeBlockAction(block);
-        });
-        this.sequenceActions(actions);
+        score -= totalFace * BoardEvaluator.faceDamageWeight;
+        return score;
+    }
+
+    /**
+     * 近似结算"多个阻挡者拦截同一攻击者":
+     * 每个阻挡者把自身伤害全额打给攻击者,攻击者拥有伤害分配权 ——
+     * 以对手视角贪心分配:优先击杀我方价值最高且可被击杀的阻挡者。
+     * 被阻挡的攻击者的溢出伤害不打脸。
+     */
+    protected simulateBlockGroup(
+        attacker: Unit,
+        blockers: Unit[],
+        evaluated: EvalMap
+    ) {
+        const groupDamage = sumBy(blockers, blocker => blocker.getDamage());
+        const attackerDies =
+            !this.isShielded(attacker) &&
+            (this.hasLethalLike(blockers) ||
+                groupDamage >= attacker.getLife());
+
+        const killed: Unit[] = [];
+        let remaining = attacker.getDamage();
+        const attackerLethal = this.hasLethalLike([attacker]);
+        const sorted = sortBy(
+            blockers,
+            blocker =>
+                -BoardEvaluator.unitValue(blocker, this.game, evaluated)
+        );
+        for (const blocker of sorted) {
+            if (remaining <= 0) {
+                break;
+            }
+            if (this.isShielded(blocker)) {
+                continue;
+            }
+            if (attackerLethal || remaining >= blocker.getLife()) {
+                killed.push(blocker);
+                remaining -= blocker.getLife();
+            }
+        }
+        return {
+            attackerDies: attackerDies,
+            killed: killed,
+            faceDamage: attackerDies ? 0 : attacker.getDamage()
+        };
+    }
+
+    protected isShielded(unit: Unit): boolean {
+        const shield = unit.hasMechanicWithId(Shielded.getId()) as Shielded;
+        return !!shield && !shield.isDepleted();
+    }
+
+    protected hasLethalLike(units: Unit[]): boolean {
+        return units.some(
+            unit =>
+                unit.hasMechanicWithId(Lethal.getId()) ||
+                unit.hasMechanicWithId(TransformDamaged.getId())
+        );
     }
 }
 

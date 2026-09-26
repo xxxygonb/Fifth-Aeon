@@ -168,7 +168,11 @@ export class AuthenticationModel {
             [usernameOrPassword]
         );
         if (queryResult.rowCount === 0) {
-            throw new Error(tsrv("No such account"));
+            // `.problem` marks this as a client-side error (400) for the
+            // express error handler instead of an opaque 500.
+            const err: any = new Error(tsrv("No such account"));
+            err.problem = err.message;
+            throw err;
         }
         const targetUser = queryResult.rows[0];
         const passwordCorrect = await passwords.checkPassword(
@@ -177,7 +181,9 @@ export class AuthenticationModel {
             targetUser.salt
         );
         if (!passwordCorrect) {
-            throw new Error(tsrv("Incorrect password"));
+            const err: any = new Error(tsrv("Incorrect password"));
+            err.problem = err.message;
+            throw err;
         }
         return this.getAuthenticationResponse(
             targetUser.accountID,

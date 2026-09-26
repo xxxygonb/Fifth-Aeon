@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CollectionService } from 'app/collection.service';
+import { DeckImportDialogComponent } from 'app/deck-editor/deck-import-dialog/deck-import-dialog.component';
 import { DeckMetadataDialogComponent } from 'app/deck-metadata-dialog/deck-metadata-dialog.component';
 import { Collection } from 'app/game_model/collection';
 import { I18nService } from 'app/i18n/i18n.service';
@@ -15,7 +16,7 @@ import { GameFormat } from '../game_model/gameFormat';
     selector: 'ccg-deck-editor',
     templateUrl: './deck-editor.component.html',
     styleUrls: ['./deck-editor.component.scss'],
-    entryComponents: [DeckMetadataDialogComponent]
+    entryComponents: [DeckMetadataDialogComponent, DeckImportDialogComponent]
 })
 export class DeckEditorComponent implements OnInit {
     public cards: Array<Card>;
@@ -43,13 +44,21 @@ export class DeckEditorComponent implements OnInit {
     }
 
     public import() {
-        const text = prompt(this.i18n.tr('Copy paste the deck code here.')) || '';
-        try {
-            this.deck.fromJson(text);
-            this.snackbar.open(this.i18n.tr('Import succeeded.'), '', { duration: 2000 });
-        } catch (e) {
-            this.snackbar.open(this.i18n.tr('Import Failed.'), '', { duration: 2000 });
-        }
+        const dialogRef = this.dialog.open(DeckImportDialogComponent, {
+            width: '480px',
+            data: {}
+        });
+        dialogRef.afterClosed().subscribe((code?: string) => {
+            if (!code) {
+                return;
+            }
+            try {
+                this.deck.fromJson(code);
+                this.snackbar.open(this.i18n.tr('Import succeeded.'), '', { duration: 2000 });
+            } catch (e) {
+                this.snackbar.open(this.i18n.tr('Import Failed.'), '', { duration: 2000 });
+            }
+        });
     }
 
     public export() {

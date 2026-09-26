@@ -174,7 +174,8 @@ export abstract class AI {
     protected sequenceActions(actions: Array<() => boolean>) {
         if (this.isImmediateMode) {
             for (const action of actions) {
-                this.runAction(action);
+                // 与延时模式一致:方法引用必须绑定 this,否则立即执行时 this 为 undefined
+                this.runAction(action.bind(this));
             }
         } else {
             this.actionSequence = actions.map(action => action.bind(this));

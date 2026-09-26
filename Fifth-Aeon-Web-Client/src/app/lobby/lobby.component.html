@@ -101,9 +101,4 @@
             </button>
         </mat-card>
     </ng-template>
-
-    <ng-template [ngIf]="!inLobby()">
-        <p class="instructions">{{ 'In Queue. Waiting for an opponent.' | tr }}</p>
-        <mat-progress-spinner attr.color="primary" mode="indeterminate"></mat-progress-spinner>
-    </ng-template>
 </div>

@@ -1,4 +1,5 @@
 import * as express from "express";
+import { rateLimit } from "express-rate-limit";
 import { db } from "../db";
 import { email } from "../email";
 import { tsrv } from "../i18n-messages";
@@ -9,8 +10,42 @@ import { validators } from "./validators";
 
 const router = express.Router();
 
+const tooManyMessage = { message: tsrv("Too many requests, please try again later") };
+
+// Brute-force protection: tighter budgets on credential endpoints,
+// looser ones on one-time-per-user flows.
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: tooManyMessage
+});
+const resetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: tooManyMessage
+});
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: tooManyMessage
+});
+const guestLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: tooManyMessage
+});
+
 router.post(
     "/register",
+    registerLimiter,
     validators.requiredAttributes(["username", "email", "password"]),
     async (req, res, next) => {
         try {
@@ -42,7 +77,10 @@ router.post(
     }
 );
 
-router.post("/registerGuest", async (req, res, next) => {
+router.post(
+    "/registerGuest",
+    guestLimiter,
+    async (req, res, next) => {
     try {
         const response = await authenticationModel.createGuestAccount();
         res.status(201).json(response);
@@ -53,6 +91,7 @@ router.post("/registerGuest", async (req, res, next) => {
 
 router.post(
     "/login",
+    loginLimiter,
     validators.requiredAttributes(["usernameOrEmail", "password"]),
     async (req, res, next) => {
         try {
@@ -108,11 +147,21 @@ router.post("/verifyEmail", passwords.authorize, async (req, res, next) => {
 
 router.post(
     "/verifyReset",
+    resetLimiter,
     passwords.authorize,
     validators.requiredAttributes(["password"]),
     async (req, res, next) => {
         try {
             const user: UserData = (req as any).user;
+            // Only tokens minted for a password reset (email link) carry this
+            // claim; a regular login JWT must not be able to change the
+            // password without proving knowledge of the old one.
+            if (!(user as any).pass) {
+                res.status(403).json({
+                    message: tsrv("Password reset token required")
+                });
+                return;
+            }
             const passwordData = await passwords.getHashedPassword(
                 req.body.password
             );
@@ -137,6 +186,7 @@ router.post(
 
 router.post(
     "/requestReset",
+    resetLimiter,
     validators.requiredAttributes(["usernameOrEmail"]),
     async (req, res, next) => {
         try {

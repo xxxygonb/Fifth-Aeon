@@ -160,6 +160,7 @@ npx ng serve              # http://localhost:4200
 | 客户端生产构建 | `npx ng build` |
 | 全卡文案验证 | `cd g:\Fifth-Aeon && node scan-all-cards.js`（期望残留 0） |
 | i18n 覆盖检查 | `cd g:\Fifth-Aeon && node check-i18n.js`（期望双 0 缺失） |
+| 三副本同步检查 | `cd g:\Fifth-Aeon && node check-model-sync.js`（期望 OK；不一致时退出码 1） |
 
 > 旧版 `npm test`（mocha + ts-node）因依赖缺失且无测试文件已移除。
 

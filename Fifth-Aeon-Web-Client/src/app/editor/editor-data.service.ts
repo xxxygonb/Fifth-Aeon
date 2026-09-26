@@ -11,7 +11,9 @@ import { apiURL } from 'app/url';
 import { CardSet, SetInformation } from 'app/game_model/cardSet';
 import { cloneDeep, isEqual } from 'lodash';
 
-@Injectable()
+// providedIn root：DecksService 等急加载服务注入了本服务，
+// 且 EditorModule 现为懒加载模块，不能承载它的 Provider。
+@Injectable({ providedIn: 'root' })
 export class EditorDataService {
     private static localStorageKey = 'ccg-cards';
     private static getCardsRoute = `${apiURL}/api/modding/getUserCards`;
@@ -39,6 +41,13 @@ export class EditorDataService {
     // 用户卡牌列表是否已从服务器加载完成（直达编辑页 URL 时需要等待它）
     private cardsLoaded = false;
     private cardsLoadedCallbacks: Array<() => void> = [];
+    // 是否有未落盘的编辑（10 秒定时器只在脏时才扫描并上传，空闲时零开销）
+    private dirty = false;
+
+    /** 标记存在未保存的编辑（由编辑组件在用户交互时调用） */
+    public markDirty() {
+        this.dirty = true;
+    }
 
     constructor(
         private collectionService: CollectionService,
@@ -51,7 +60,14 @@ export class EditorDataService {
                 this.loadData();
             }
         });
-        setInterval(() => this.saveData().catch(() => null), 10000);
+        setInterval(() => {
+            if (!this.dirty) {
+                return;
+            }
+            this.saveData()
+                .then(() => (this.dirty = false))
+                .catch(() => null);
+        }, 10000);
     }
 
     private loadActiveSets() {
@@ -130,6 +146,7 @@ export class EditorDataService {
             id: id,
             public: false
         });
+        this.markDirty();
     }
 
     public saveSet(set: SetInformation) {
@@ -212,6 +229,7 @@ export class EditorDataService {
             type: UnitType.Human
         } as CardData;
         this.cards.push(data);
+        this.markDirty();
     }
 
     public getCard(id: string) {

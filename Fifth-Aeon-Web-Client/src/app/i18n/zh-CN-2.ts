@@ -199,6 +199,8 @@ export const zhCNUI2: Record<string, string> = {
     'Clear all cards from deck.': '清空卡组中的所有卡牌。',
     'Export Deck': '导出卡组',
     'Import Deck': '导入卡组',
+    'Import': '导入',
+    'Cancel': '取消',
 
     // ---- Deck metadata dialog -------------------------------------------
     'Deck Name': '卡组名称',

@@ -40,6 +40,8 @@ export class WebClient {
     private queueExitAt = 0;
     private connected = false;
     private connectedToLocalServer = false;
+    /** 页面刷新/关闭置位:此时绝不发 Quit,交由服务器 60 秒断线保留 + 重连恢复 */
+    private unloading = false;
 
     public getGameReward: ((won: boolean) => Promise<string>) | null = null;
     public onDeckSelected: () => void = () => null;
@@ -52,14 +54,14 @@ export class WebClient {
         private zone: NgZone,
         public dialog: MatDialog,
         private hotkeys: HotkeysService,
+        private auth: AuthenticationService,
         private collection: CollectionService,
         public gameManager: GameManager,
         preloader: Preloader,
         messengerService: MessengerService,
-        auth: AuthenticationService,
         private i18n: I18nService
     ) {
-        auth.onAuth(user => {
+        this.auth.onAuth(user => {
             if (user) {
                 this.onLogin(user);
             }
@@ -105,6 +107,12 @@ export class WebClient {
         this.gameManager.setGameEndCallback((won, quit) =>
             this.openEndDialog(won, quit)
         );
+
+        // 刷新/关闭页面时置位,让 exitGame 跳过 Quit:
+        // 刷新后登录恢复会自动 ResendGame 回到对局(服务器保留 60 秒)
+        window.addEventListener('beforeunload', () => {
+            this.unloading = true;
+        });
 
         this.addHotkeys();
     }
@@ -283,7 +291,9 @@ export class WebClient {
         // Only send Quit while a game is actually in progress; after the end
         // dialog the game is already over and sending Quit again (e.g. from
         // ngOnDestroy during navigation) produces duplicate quit actions.
-        if (this.state === ClientState.InGame) {
+        // 页面刷新/关闭时绝不发 Quit —— 那会立刻终结对局、把刷新变成认输;
+        // 服务器按断线 60 秒保留对局,重连后经 ResendGame 自动恢复。
+        if (this.state === ClientState.InGame && !this.unloading) {
             this.gameManager.exitGame();
         }
         if (final) {
@@ -323,7 +333,60 @@ export class WebClient {
         return this.state === ClientState.InGame;
     }
 
+    /**
+     * 对局刷新恢复(InPlayGuard 刷新后调用):
+     *  1. AI 局快照存在 → 本地重放恢复(瞬时);
+     *  2. 联机局 → 发 ResendGame,服务器在断线保留期内回发
+     *     StartGame(replay)+全量事件(由既有的 StartGame 处理器驱动恢复),
+     *     轮询等待状态进入 InGame(最多 5 秒)。
+     * 两者皆失败 → false(守卫回大厅)。
+     */
+    public tryRestoreGame(): Promise<boolean> {
+        console.log('[tryRestore] called, aiSnapshot=', this.gameManager.hasAiSnapshot());
+        if (this.gameManager.hasAiSnapshot()) {
+            if (this.gameManager.restoreAIGame()) {
+                this.changeState(ClientState.InGame);
+                return Promise.resolve(true);
+            }
+        }
+        // WS 若尚在重连,ResendGame 会进入离线队列,重连后自动补发
+        this.messenger.sendMessageToServer(MessageType.ResendGame, {});
+        return new Promise<boolean>(resolve => {
+            const deadline = Date.now() + 5000;
+            const poll = setInterval(() => {
+                if (this.state === ClientState.InGame) {
+                    clearInterval(poll);
+                    resolve(true);
+                } else if (Date.now() > deadline) {
+                    clearInterval(poll);
+                    // 恢复失败:已登录则把状态机推进到大厅,避免 UI 卡在中间态
+                    if (this.auth.loggedIn()) {
+                        this.changeState(ClientState.InLobby);
+                    }
+                    resolve(false);
+                }
+            }, 200);
+        });
+    }
+
+    /** 主动退出对局(游戏菜单):AI 局直接回大厅,联机局发 Quit 结算 */
+    public quitGame() {
+        if (this.state !== ClientState.InGame) {
+            return;
+        }
+        this.gameManager.clearAiSnapshot();
+        if (this.gameManager.isLocalGame()) {
+            this.gameManager.reset();
+            this.changeState(ClientState.InLobby);
+            this.router.navigate(['/lobby']);
+        } else {
+            this.exitGame();
+        }
+    }
+
     private openEndDialog(playerWon: boolean, quit: boolean) {
+        // 对局已分出胜负:AI 局快照不再需要
+        this.gameManager.clearAiSnapshot();
         const config = new MatDialogConfig();
         config.disableClose = true;
         const dialogRef = this.dialog.open(EndDialogComponent, config);

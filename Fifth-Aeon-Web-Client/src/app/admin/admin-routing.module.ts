@@ -5,7 +5,8 @@ import { AdminPanelComponent } from './admin-panel/admin-panel.component';
 
 const routes: Routes = [
     {
-        path: 'admin',
+        // 懒加载入口由 AppRoutingModule 提供 'admin' 前缀，这里用相对路径
+        path: '',
         component: AdminPanelComponent,
         canActivate: [LoggedInGuard]
     },
