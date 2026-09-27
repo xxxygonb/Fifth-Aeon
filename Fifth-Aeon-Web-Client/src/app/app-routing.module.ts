@@ -6,6 +6,11 @@ import { DraftComponent } from './draft/draft.component';
 import { InPlayGuard } from './in-play.guard';
 import { LandingComponent } from './landing/landing.component';
 import { LobbyComponent } from './lobby/lobby.component';
+import { LobbyHomeComponent } from './lobby/lobby-home.component';
+import { LobbySingleComponent } from './lobby/lobby-single.component';
+import { LobbyMultiComponent } from './lobby/lobby-multi.component';
+import { LobbyModsComponent } from './lobby/lobby-mods.component';
+import { LobbyOtherComponent } from './lobby/lobby-other.component';
 import { LoggedInGuard } from './login.guard';
 import { OpenPackComponent } from './open-pack/open-pack.component';
 import { QueueComponent } from './queue/queue.component';
@@ -51,7 +56,18 @@ const routes: Routes = [
         component: OpenPackComponent,
         canActivate: [LoggedInGuard]
     },
-    { path: 'lobby', component: LobbyComponent, canActivate: [LoggedInGuard] },
+    {
+        path: 'lobby',
+        component: LobbyComponent,
+        canActivate: [LoggedInGuard],
+        children: [
+            { path: '', component: LobbyHomeComponent },
+            { path: 'single', component: LobbySingleComponent },
+            { path: 'multi', component: LobbyMultiComponent },
+            { path: 'mods', component: LobbyModsComponent },
+            { path: 'other', component: LobbyOtherComponent }
+        ]
+    },
     { path: 'queue', component: QueueComponent, canActivate: [LoggedInGuard] },
     { path: 'draft', component: DraftComponent, canActivate: [LoggedInGuard] },
     { path: 'login', component: LoginComponent },
@@ -60,7 +76,7 @@ const routes: Routes = [
     { path: 'initialSetup', component: InitialSetupComponent, canActivate: [LoggedInGuard] },
     { path: 'reset/:token', component: ResetPasswordComponent },
     { path: 'verify/:token', component: VerifyEmailComponent },
-    { path: '**', component: LobbyComponent, canActivate: [LoggedInGuard] }
+    { path: '**', redirectTo: '/lobby' }
 ];
 
 @NgModule({

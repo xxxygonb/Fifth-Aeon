@@ -215,6 +215,9 @@
                 [darkened]="!card.isPlayable(game)"
                 (click)="select(card)"
             ></ccg-card>
-        </div>
+
+
+        <!-- 非我方行动回合的输入锁:AI 回合/对手行动期间屏蔽棋盘与手牌点击 -->
+        <div class="input-lock" *ngIf="inputLocked()"></div>        </div>
     </div>
 </div>

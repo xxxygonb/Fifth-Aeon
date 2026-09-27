@@ -1,0 +1,26 @@
+<div class="lobby">
+    <mat-card class="lobby-card">
+        <mat-card-title>{{ 'Multiplayer' | tr }}</mat-card-title>
+
+        <ng-template [ngIf]="client.isConnected()">
+            <button mat-raised-button color="primary" (click)="client.selectDeckAndStartGame(2)">
+                <mat-icon>public</mat-icon> {{ 'Public Game' | tr }}
+            </button>
+        </ng-template>
+
+        <ng-template [ngIf]="!client.isConnected() && !isServerless()">
+            <span class="offline-msg">{{ 'Offline (Public Queue Unavailable)' | tr }}</span>
+        </ng-template>
+
+        <button mat-raised-button color="primary" (click)="client.openP2PDialog()">
+            <mat-icon>link</mat-icon> {{ 'P2P Game' | tr }}
+        </button>
+    </mat-card>
+
+    <div class="back-row">
+        <button mat-raised-button routerLink="/lobby">
+            <mat-icon>arrow_back</mat-icon>
+            <span> {{ 'Back to Lobby' | tr }} </span>
+        </button>
+    </div>
+</div>

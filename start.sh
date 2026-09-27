@@ -61,7 +61,16 @@ else
     echo "[OK] Client dependencies present"
 fi
 
-# ---- 5. Compile server (always incremental, avoids stale dist) ----
+# ---- 5. Model sync check (three game_model copies must stay consistent) ----
+echo "[..] Checking game model sync ..."
+if node "$ROOT/check-model-sync.js"; then
+    echo "[OK] Model sync check passed"
+else
+    echo "[WARN] game_model 三副本存在差异,可能导致联机状态不同步(见上方列表)。"
+    echo "[WARN] 建议将 Web-Client 副本同步到其余两份后重试。"
+fi
+
+# ---- 6. Compile server (always incremental, avoids stale dist) ----
 echo "[..] Compiling server ..."
 (cd "$ROOT/Fifth-Aeon-Server" && npx gulp scripts >>"$LOGDIR/build-server.log" 2>&1) \
     && echo "[OK] Server compiled" || fail "server build failed (see logs/build-server.log)"

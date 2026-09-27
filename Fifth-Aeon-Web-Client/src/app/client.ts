@@ -1,5 +1,6 @@
 import { Injectable, NgZone } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Hotkey, HotkeysService } from 'angular2-hotkeys';
 import { CollectionService } from 'app/collection.service';
@@ -38,6 +39,10 @@ export class WebClient {
     private state: ClientState = ClientState.UnAuth;
     /** Timestamp of the last ExitQueue, used to ignore late queue receipts */
     private queueExitAt = 0;
+    /** 正在恢复/已恢复的对局 id:用于识别重复的 StartGame(replay) */
+    private restoredGameId: string | null = null;
+    /** 上次发出 ResendGame 的时间:节流双通道恢复的重复请求 */
+    private resendRequestedAt = 0;
     private connected = false;
     private connectedToLocalServer = false;
     /** 页面刷新/关闭置位:此时绝不发 Quit,交由服务器 60 秒断线保留 + 重连恢复 */
@@ -53,6 +58,7 @@ export class WebClient {
         private router: Router,
         private zone: NgZone,
         public dialog: MatDialog,
+        private snackbar: MatSnackBar,
         private hotkeys: HotkeysService,
         private auth: AuthenticationService,
         private collection: CollectionService,
@@ -80,8 +86,7 @@ export class WebClient {
             // Server acknowledged our state request: the full event log has
             // been delivered, resume normal tips/sounds/animations.
             this.gameManager.finishReplay();
-        }, this);
-        this.messenger.addHandler(
+        }, this);        this.messenger.addHandler(
             MessageType.ClientError,
             msg => this.clientError(msg),
             this
@@ -99,8 +104,22 @@ export class WebClient {
             this
         );
 
-        this.messenger.connectChange = status =>
-            zone.run(() => (this.connected = status));
+        this.messenger.connectChange = status => {
+            zone.run(() => {
+                this.connected = status;
+                // 联机对局中 WS 重连成功:请求增量补发断线期间缺失的事件
+                if (
+                    status &&
+                    this.state === ClientState.InGame &&
+                    localStorage.getItem('fa-game-mode') === 'multiplayer'
+                ) {
+                    const game = this.gameManager.getGame();
+                    this.requestGameStateResend(
+                        game ? game.getExpectedEventNumber() : 0
+                    );
+                }
+            });
+        };
         messengerService.getLocalMessenger().connectChange = status =>
             zone.run(() => (this.connectedToLocalServer = status));
 
@@ -122,10 +141,25 @@ export class WebClient {
             '[recovery] StartGame received',
             msg.data.replay ? '(replay)' : '(new game)'
         );
+        const replay = msg.data.replay === true;
+        // 双通道恢复(登录恢复 + 路由守卫)会各请求一次 ResendGame,服务器
+        // 会回发两份 StartGame(replay)+全量事件。同一局只重建一次镜像:
+        // 重复的 StartGame 若再建新实例,游戏组件会绑定到被丢弃的旧镜像,
+        // 表现为刷新后界面冻结、点击无效(看似"游戏没有恢复")。
+        if (
+            replay &&
+            this.isInGame() &&
+            msg.data.gameId &&
+            msg.data.gameId === this.restoredGameId
+        ) {
+            console.log('[recovery] duplicate StartGame(replay) ignored');
+            return;
+        }
+        this.restoredGameId = replay ? msg.data.gameId || null : null;
         this.gameManager.startMultiplayerGame(
             msg.data.playerNumber,
             msg.data.opponent,
-            msg.data.replay === true
+            replay
         );
         this.changeState(ClientState.InGame);
         this.router.navigate(['/game']);
@@ -192,6 +226,25 @@ export class WebClient {
     }
 
     // Misc --------------------
+    /**
+     * 请求服务器重发对局状态(StartGame(replay)+全量事件)。
+     * 登录恢复与路由守卫都会调用:5 秒内只发一次,避免服务器回发两份
+     * 完整事件日志导致客户端重放两遍(第二份会被时序守卫跳过,但应避免)。
+     * from > 0:增量模式——客户端已有镜像,仅补发缺失的事件。
+     */
+    public requestGameStateResend(from = 0) {
+        const now = Date.now();
+        if (now - this.resendRequestedAt < 5000) {
+            console.log('[recovery] resend request throttled');
+            return;
+        }
+        this.resendRequestedAt = now;
+        console.log('[recovery] requesting game state resend from', from);
+        this.messenger.sendMessageToServer(MessageType.ResendGame, {
+            from: from
+        });
+    }
+
     private onLogin(loginData: UserData) {
         this.changeState(ClientState.InLobby);
         this.username = loginData.username;
@@ -200,8 +253,7 @@ export class WebClient {
         this.tips.playTip(TipType.StartGame);
         // 登录态恢复后向服务器确认是否有一局进行中的游戏；
         // 若有，服务器会回发 StartGame(replay) + 全部历史事件，直接回到对局。
-        console.log('[recovery] logged in, requesting game state resend');
-        this.messenger.sendMessageToServer(MessageType.ResendGame, {});
+        this.requestGameStateResend();
     }
 
     public enterOfflineMode(): boolean {
@@ -242,6 +294,17 @@ export class WebClient {
 
     private clientError(msg: Message) {
         console.error(msg.data.message || msg.data);
+        // 操作失败对玩家可见:弹 toast;对局内动作被拒说明本地乐观
+        // 状态可能与服务器不一致,自动请求重同步(节流避免风暴)
+        this.zone.run(() => {
+            const text: string = msg.data.message || String(msg.data);
+            this.snackbar.open(text, this.i18n.tr('Dismiss'), {
+                duration: 4000
+            });
+        });
+        if (msg.data && msg.data.type === 0 /* GameActionError */) {
+            this.requestGameStateResend();
+        }
         this.onError(msg.data);
     }
 
@@ -266,7 +329,7 @@ export class WebClient {
     }
 
     // Transitions -----------------------------------------------
-    public returnToLobby() {
+    public returnToLobby(navigate = true) {
         switch (this.state) {
             case ClientState.InGame:
                 this.exitGame();
@@ -275,7 +338,9 @@ export class WebClient {
                 this.leaveQueue();
                 break;
         }
-        this.router.navigate(['/lobby']);
+        if (navigate) {
+            this.router.navigate(['/lobby']);
+        }
         this.changeState(ClientState.InLobby);
     }
 
@@ -335,22 +400,25 @@ export class WebClient {
 
     /**
      * 对局刷新恢复(InPlayGuard 刷新后调用):
-     *  1. AI 局快照存在 → 本地重放恢复(瞬时);
-     *  2. 联机局 → 发 ResendGame,服务器在断线保留期内回发
-     *     StartGame(replay)+全量事件(由既有的 StartGame 处理器驱动恢复),
-     *     轮询等待状态进入 InGame(最多 5 秒)。
-     * 两者皆失败 → false(守卫回大厅)。
+     *  联机局 → 发 ResendGame,服务器在断线保留期内回发
+     *  StartGame(replay)+全量事件,轮询等待状态进入 InGame(最多 5 秒)。
+     * 本地对局(AI/服务器 AI/P2P)不做刷新恢复:立即返回 false 回大厅。
      */
     public tryRestoreGame(): Promise<boolean> {
-        console.log('[tryRestore] called, aiSnapshot=', this.gameManager.hasAiSnapshot());
-        if (this.gameManager.hasAiSnapshot()) {
-            if (this.gameManager.restoreAIGame()) {
-                this.changeState(ClientState.InGame);
-                return Promise.resolve(true);
+        const mode = localStorage.getItem('fa-game-mode');
+        const backToLobby = () => {
+            // 状态归位:大厅模板依赖 InLobby 状态渲染,防止空白页
+            if (this.auth.loggedIn()) {
+                this.changeState(ClientState.InLobby);
             }
+            return false;
+        };
+        if (mode !== 'multiplayer') {
+            console.log('[tryRestore] local game or no game, skip restore');
+            return Promise.resolve(backToLobby());
         }
         // WS 若尚在重连,ResendGame 会进入离线队列,重连后自动补发
-        this.messenger.sendMessageToServer(MessageType.ResendGame, {});
+        this.requestGameStateResend();
         return new Promise<boolean>(resolve => {
             const deadline = Date.now() + 5000;
             const poll = setInterval(() => {
@@ -374,7 +442,7 @@ export class WebClient {
         if (this.state !== ClientState.InGame) {
             return;
         }
-        this.gameManager.clearAiSnapshot();
+        localStorage.removeItem('fa-game-mode');
         if (this.gameManager.isLocalGame()) {
             this.gameManager.reset();
             this.changeState(ClientState.InLobby);
@@ -385,8 +453,8 @@ export class WebClient {
     }
 
     private openEndDialog(playerWon: boolean, quit: boolean) {
-        // 对局已分出胜负:AI 局快照不再需要
-        this.gameManager.clearAiSnapshot();
+        // 对局已分出胜负:清除对局模式标记,刷新后不再尝试恢复
+        localStorage.removeItem('fa-game-mode');
         const config = new MatDialogConfig();
         config.disableClose = true;
         const dialogRef = this.dialog.open(EndDialogComponent, config);

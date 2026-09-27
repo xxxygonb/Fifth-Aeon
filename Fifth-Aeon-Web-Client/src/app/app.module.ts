@@ -30,6 +30,11 @@ import { I18nService } from './i18n/i18n.service';
 import { I18nModule } from './i18n/i18n.module';
 import { LandingComponent } from './landing/landing.component';
 import { LobbyComponent } from './lobby/lobby.component';
+import { LobbyHomeComponent } from './lobby/lobby-home.component';
+import { LobbySingleComponent } from './lobby/lobby-single.component';
+import { LobbyMultiComponent } from './lobby/lobby-multi.component';
+import { LobbyModsComponent } from './lobby/lobby-mods.component';
+import { LobbyOtherComponent } from './lobby/lobby-other.component';
 import { LoggedInGuard } from './login.guard';
 import { MaterialModule } from './material.module';
 import { MessengerService } from './messenger.service';
@@ -61,6 +66,11 @@ export function initI18n(i18n: I18nService) {
     declarations: [
         AppComponent,
         LobbyComponent,
+        LobbyHomeComponent,
+        LobbySingleComponent,
+        LobbyMultiComponent,
+        LobbyModsComponent,
+        LobbyOtherComponent,
         QueueComponent,
         EndDialogComponent,
         DeckEditorComponent,

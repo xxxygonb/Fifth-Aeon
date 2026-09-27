@@ -22,13 +22,6 @@ import {
     DistributeDamageAction
 } from './events/gameAction';
 
-export interface GameReplay {
-    seed: string | number;
-    actions: GameAction[];
-    deckLists: [SavedDeck, SavedDeck];
-    winner: number;
-}
-
 export class ServerGame extends Game {
     private static seed: string | number = 0;
     // Per-instance RNG: concurrent games must never share a random stream,
@@ -60,11 +53,8 @@ export class ServerGame extends Game {
         const decks = deckLists.map(deckList => {
             const deck = deckList.toDeck().map(fact => {
                 const card = fact();
-                // 确定性实例 id:实例 id 原为 Math.random 生成,重放
-                // (getReplay 的 seed + actionLog)时新旧实例 id 不一致,
-                // 动作日志里的卡牌引用会全部失效。改为构造序确定性 id
-                // ('c'+序号,与 playGeneratedUnit 的纯数字 token id 错开),
-                // 同种子重放时实例与 id 完全一致,引擎的确定性重放由此成立。
+                // 确定性实例 id('c'+构造序):与 playGeneratedUnit 的
+                // 纯数字 token id 错开,同种子重建时实例与 id 完全一致。
                 card.setId('c' + this.generatedCardId.toString(10));
                 this.generatedCardId++;
                 this.cardPool.set(card.getId(), card);
@@ -91,18 +81,6 @@ export class ServerGame extends Game {
         ];
 
         this.addDeathHandlers();
-    }
-
-    public getReplay(): GameReplay {
-        return {
-            seed: this.seed,
-            actions: [...this.actionLog],
-            deckLists: [...this.deckLists.map(deck => deck.getSavable())] as [
-                SavedDeck,
-                SavedDeck
-            ],
-            winner: this.getWinner()
-        };
     }
 
     public getResponsiblePlayer() {

@@ -224,7 +224,7 @@ export abstract class Game {
             player = this.getPlayer(player);
         }
         card.setOwner(player.getPlayerNumber());
-        card.setId(this.generatedCardId.toString(10));
+        card.setId('t' + this.generatedCardId.toString(10));
         this.cardPool.set(card.getId(), card);
         this.generatedCardId++;
         player.playCard(this, card, true);
@@ -245,6 +245,11 @@ export abstract class Game {
         return (
             this.currentChoices[0] === null && this.currentChoices[1] === null
         );
+    }
+
+    /** 该玩家当前待应答的选择(无则 null)。刷新恢复后用于重新弹出选择窗口。 */
+    public getPendingChoice(player: number): Choice | null {
+        return this.currentChoices[player];
     }
 
     // Combat -------------------------------------------------------------

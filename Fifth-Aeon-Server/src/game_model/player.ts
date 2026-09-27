@@ -154,8 +154,14 @@ export class Player extends Unit {
     public discardExtra(game: Game) {
         const num = this.hand.length - this.softHandLimit;
         if (num > 0) {
-            this.discard(game, num, () => game.nextTurn());
-        } else {
+            this.discard(game, num, () => {
+                // 回合推进仅由权威端(ServerGame)发起;
+                // 客户端镜像(ClientGame)由 TurnStart 事件驱动,不自行推进
+                if (game instanceof ServerGame) {
+                    game.nextTurn();
+                }
+            });
+        } else if (game instanceof ServerGame) {
             game.nextTurn();
         }
     }

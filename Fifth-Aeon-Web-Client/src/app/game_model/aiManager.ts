@@ -49,11 +49,26 @@ class AIManager {
             record.losses++;
         }
         if (this.selectedDifficulty === DifficultyLevel.Dynamic) {
-            const winRate = record.wins / (record.wins + record.losses);
-            if (this.autoDifficulty < DifficultyLevel.Expert && winRate > 0.65) {
-                this.autoDifficulty++;
-            } else if (this.autoDifficulty > DifficultyLevel.Easy && winRate < 0.45) {
-                this.autoDifficulty--;
+            const games = record.wins + record.losses;
+            // 样本不足不调档:避免开局一两局就因 100%/0% 胜率大幅波动
+            if (games >= 4) {
+                const winRate = record.wins / games;
+                if (
+                    this.autoDifficulty < DifficultyLevel.Expert &&
+                    winRate > 0.65
+                ) {
+                    this.autoDifficulty++;
+                    // 调档后清零该档统计,升到新档后重新积累样本
+                    record.wins = 0;
+                    record.losses = 0;
+                } else if (
+                    this.autoDifficulty > DifficultyLevel.Easy &&
+                    winRate < 0.45
+                ) {
+                    this.autoDifficulty--;
+                    record.wins = 0;
+                    record.losses = 0;
+                }
             }
         }
         this.saveState();
@@ -100,11 +115,6 @@ class AIManager {
             return this.selectedDifficulty;
         }
         return this.autoDifficulty;
-    }
-
-    /** 解析后的实际难度(Dynamic 会按胜率落到具体档位;快照持久化用) */
-    public getConcreteDifficulty(): ConcreteDifficulty {
-        return this.getCurrentDifficulty();
     }
 
     public getLeveledOpponent() {

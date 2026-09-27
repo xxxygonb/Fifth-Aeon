@@ -116,7 +116,7 @@ export class Server {
             }
             const game = this.games.get(acc.gameId);
             if (game) {
-                game.resendState(msg.source);
+                game.resendState(msg.source, (msg.data && msg.data.from) || 0);
             }
         });
 

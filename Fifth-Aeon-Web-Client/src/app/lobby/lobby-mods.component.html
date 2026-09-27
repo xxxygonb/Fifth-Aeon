@@ -1,0 +1,20 @@
+<div class="lobby">
+    <mat-card class="lobby-card">
+        <mat-card-title>{{ 'Modding' | tr }}</mat-card-title>
+        <button routerLink="/editor" mat-raised-button color="primary">
+            <mat-icon>mode_edit</mat-icon>
+            <span> {{ 'Card Editor' | tr }} </span>
+        </button>
+        <button routerLink="/editor/selectMods" mat-raised-button color="primary">
+            <mat-icon>import_export</mat-icon>
+            <span> {{ 'Import Sets' | tr }} </span>
+        </button>
+    </mat-card>
+
+    <div class="back-row">
+        <button mat-raised-button routerLink="/lobby">
+            <mat-icon>arrow_back</mat-icon>
+            <span> {{ 'Back to Lobby' | tr }} </span>
+        </button>
+    </div>
+</div>

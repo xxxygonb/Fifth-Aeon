@@ -2,6 +2,7 @@ import { Injectable, NgZone } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { SpeedService } from 'app/speed.service';
 import { every, sample } from 'lodash';
+import { CardChooserComponent } from './game/card-chooser/card-chooser.component';
 import { DamageDistributionDialogComponent } from './game/damage-distribution-dialog/damage-distribution-dialog.component';
 import { OverlayService } from './game/overlay.service';
 import { AI } from './game_model/ai/ai';
@@ -144,6 +145,8 @@ export class GameManager {
      * 整局事件重放结束：恢复正常的提示/音效/动画副作用。
      * 若重放结束时的当前阶段正是需要本地玩家分配伤害的阶段，
      * 补弹分配窗口（历史中的分配阶段已被跳过）。
+     * 若仍有本地玩家的选择未应答（刷新发生在选择弹窗打开期间，
+     * 历史中没有对应的 ChoiceMade 事件），重新弹出选择窗口。
      */
     public finishReplay() {
         if (!this.replaying) {
@@ -152,13 +155,59 @@ export class GameManager {
         this.replaying = false;
         console.log('[recovery] replay finished');
         const game = this.game1;
+        if (!game) {
+            return;
+        }
+        game.setReplaying(false);
+        this.reopenPendingChoiceIfNeeded();
         if (
-            game &&
+            !this.dialog.openDialogs.some(
+                d => d.componentInstance instanceof CardChooserComponent
+            ) &&
             game.getPhase() === GamePhase.DamageDistribution &&
             game.isActivePlayer(this.playerNumber)
         ) {
             this.createDamageSelectors();
         }
+    }
+
+    /**
+     * 若存在本地玩家未应答的选择则重开选择窗口。
+     * finishReplay 与 GameComponent 构造(晚于重放完成时)都会调用;
+     * 以"已有选择窗口打开"去重,避免双开。
+     */
+    public reopenPendingChoiceIfNeeded() {
+        const game = this.game1;
+        if (!game) {
+            return;
+        }
+        if (
+            this.dialog.openDialogs.some(
+                d => d.componentInstance instanceof CardChooserComponent
+            )
+        ) {
+            return;
+        }
+        const pending = game.getPendingChoice(this.playerNumber);
+        if (!pending) {
+            return;
+        }
+        console.log('[recovery] reopening pending choice');
+        const config = new MatDialogConfig();
+        config.disableClose = true;
+        config.maxWidth = '95vw';
+        const dialogRef = this.dialog.open(CardChooserComponent, config);
+        dialogRef.componentInstance.cards = Array.from(pending.validCards);
+        dialogRef.componentInstance.min = pending.min;
+        dialogRef.componentInstance.max = pending.max;
+        dialogRef.componentInstance.setPage();
+        dialogRef.afterClosed().subscribe((result: Card[] | undefined) => {
+            game.makeChoice(this.playerNumber, result || []);
+        });
+    }
+
+    public isReplaying(): boolean {
+        return this.replaying;
     }
 
     private stopAI() {
@@ -276,8 +325,6 @@ export class GameManager {
             return;
         }
         this.sendEventsToLocalPlayers(res);
-        // AI 局:每个动作落地后节流保存快照,供刷新后重放恢复
-        this.saveAiSnapshot();
     }
 
     // Dialogs ----------------------------------------------------------
@@ -351,6 +398,19 @@ export class GameManager {
         const playerGame = this.game1;
         if (!playerGame) {
             throw new Error('Games not in progress');
+        }
+
+        // 时序守卫:事件号必须与期望的下一个事件号一致。不一致说明这是
+        // 重复的恢复事件批(双通道恢复)或已处理过的事件,整体忽略,
+        // 既防状态被二次应用,也防陈旧事件触发提示/音效/结算弹窗。
+        if (event.number !== playerGame.getExpectedEventNumber()) {
+            console.warn(
+                '[recovery] skipping out-of-order event',
+                event.number,
+                'expected',
+                playerGame.getExpectedEventNumber()
+            );
+            return;
         }
 
         // 重放历史事件：只同步状态，跳过提示/音效/动画弹窗等副作用
@@ -502,7 +562,13 @@ export class GameManager {
         opponentName: string,
         replay = false
     ) {
+        // 登录恢复与路由守卫都会请求 ResendGame,可能连续重放两局;
+        // 重建前关掉旧局遗留的选择窗口,避免弹窗指向过期的游戏实例
+        this.dialog.openDialogs
+            .filter(d => d.componentInstance instanceof CardChooserComponent)
+            .forEach(d => d.close());
         this.gameType = GameType.PublicGame;
+        this.markGameMode('multiplayer');
         this.replaying = replay;
         this.soundManager.setFactionContext(this.deck.getColors());
         this.ais = [];
@@ -521,6 +587,8 @@ export class GameManager {
 
         this.game1.enableAnimations();
         this.game1.setOwningPlayer(this.playerNumber);
+        // 重放恢复:同步处理器需要应用本地玩家自己的事件(见 ClientGame.setReplaying)
+        this.game1.setReplaying(replay);
 
         this.soundManager.playImportantSound('gong');
         this.zone.run(() => {
@@ -530,6 +598,7 @@ export class GameManager {
 
     public async startAiServerGame() {
         this.gameType = GameType.ServerAIGame;
+        this.markGameMode('local');
         this.playerNumber = Math.random() > 0.5 ? 1 : 0;
         this.opponentNumber = 1 - this.playerNumber;
         this.localMessenger.sendMessageToServer(MessageType.StartGame, {
@@ -572,7 +641,7 @@ export class GameManager {
         const aiDeck = matchup.deck;
 
         this.setupAiGame(matchup.ai, aiDeck);
-        this.clearAiSnapshot();
+        this.markGameMode('local');
 
         // scenario = tutorialCampaign[0];
         if (scenario && this.gameModel && this.game1 && this.game2) {
@@ -590,6 +659,18 @@ export class GameManager {
             }
             this.startAiWithSpeed(this.speed.speeds.aiTick);
         });
+    }
+
+    /**
+     * 对局模式标记:刷新后路由守卫据此决定恢复策略。
+     * 联机局 → 请求服务器重发对局;本地局(AI/P2P) → 直接回大厅。
+     */
+    private markGameMode(mode: 'multiplayer' | 'local') {
+        try {
+            localStorage.setItem('fa-game-mode', mode);
+        } catch (e) {
+            // 忽略存储异常
+        }
     }
 
     /**
@@ -623,213 +704,6 @@ export class GameManager {
         this.aisByPlayerNumber = [null, newAI];
     }
 
-    // ---- AI 局快照(刷新恢复)--------------------------------------
-    // 引擎的 getReplay() 导出 {seed, actionLog, deckLists}:种子决定洗牌,
-    // 逐条重放动作日志即可完整重建对局(历史重放不经过 AI 决策,
-    // EasyAI 的评估噪声不影响还原)。快照存 localStorage,节流写入。
-
-    private static readonly AI_SNAPSHOT_KEY = 'fa-ai-snapshot';
-    private aiSnapshotDirty = false;
-    private aiSnapshotTimer: any = null;
-
-    private saveAiSnapshot() {
-        if (this.gameType !== GameType.AiGame || !this.gameModel) {
-            return;
-        }
-        try {
-            // 同步立即写:快照几十 KB,localStorage 写入 ~1ms,
-            // 保证刷新恢复点与真实状态零偏差(节流会丢失最后几秒的 AI 动作)
-            const snapshot = {
-                replay: this.gameModel.getReplay(),
-                difficulty: aiManager.getConcreteDifficulty(),
-                savedAt: Date.now()
-            };
-            localStorage.setItem(
-                GameManager.AI_SNAPSHOT_KEY,
-                JSON.stringify(snapshot)
-            );
-        } catch (e) {
-            // 快照失败不影响对局(存储满/序列化异常)
-        }
-    }
-
-    public hasAiSnapshot(): boolean {
-        try {
-            return !!localStorage.getItem(GameManager.AI_SNAPSHOT_KEY);
-        } catch (e) {
-            return false;
-        }
-    }
-
-    public clearAiSnapshot() {
-        try {
-            localStorage.removeItem(GameManager.AI_SNAPSHOT_KEY);
-        } catch (e) {
-            // 忽略
-        }
-        this.aiSnapshotDirty = false;
-        if (this.aiSnapshotTimer) {
-            clearTimeout(this.aiSnapshotTimer);
-            this.aiSnapshotTimer = null;
-        }
-    }
-
-    /**
-     * 从快照恢复 AI 对局(刷新后由 InPlayGuard 调用)。
-     * 成功:重建权威端并重放全部动作,恢复镜像与 AI,返回 true;
-     * 失败(快照缺失/损坏/重放异常):清除快照并返回 false。
-     */
-    public restoreAIGame(): boolean {
-        try {
-            const raw = localStorage.getItem(GameManager.AI_SNAPSHOT_KEY);
-            if (!raw) {
-                console.warn('[ai-restore] no snapshot');
-                return false;
-            }
-            const snapshot = JSON.parse(raw);
-            const replay = snapshot.replay;
-            if (
-                !replay ||
-                !Array.isArray(replay.actions) ||
-                !replay.deckLists
-            ) {
-                console.warn(
-                    '[ai-restore] bad snapshot shape',
-                    Object.keys(snapshot),
-                    Object.keys(replay || {})
-                );
-                this.clearAiSnapshot();
-                return false;
-            }
-            console.log(
-                '[ai-restore] replaying',
-                replay.actions.length,
-                'actions, seed',
-                replay.seed
-            );
-            const decks = replay.deckLists.map((saved: any) => {
-                const d = new DeckList(standardFormat);
-                d.fromSavable(saved);
-                return d;
-            });
-            this.soundManager.setFactionContext(decks[0].getColors());
-            this.reset();
-            ServerGame.setSeed(replay.seed);
-            this.playerNumber = 0;
-            this.opponentNumber = 1;
-            this.log = new Log(this.playerNumber);
-            this.deck = decks[0];
-            const ctor = aiManager.getLeveledAIFor(snapshot.difficulty);
-            console.log('[ai-restore] ctor:', String(ctor), 'difficulty:', snapshot.difficulty);
-            this.setupAiGame(ctor, decks[1]);
-            if (!this.gameModel || !this.game1 || !this.game2) {
-                this.clearAiSnapshot();
-                return false;
-            }
-            const gameModel = this.gameModel;
-
-            // 原局的挂起选择(调度/弃牌)用"回调式应答"精确重放:
-            // 不经 handleAction/CardChoice(避免与重放循环交错),
-            // 直接以原局的回答推进权威状态,事件由 startGame/动作本身产生。
-            // 确定性 id 保证原局的 choice ids 在重放实例上有效。
-            const savedChoices = replay.actions.filter(
-                (action: any) => action.type === GameActionType.CardChoice
-            );
-            gameModel.promptCardChoice = (
-                player: number,
-                options: Card[],
-                min: number,
-                max: number,
-                callback: ((cards: Card[]) => void) | null
-            ) => {
-                if (!callback) {
-                    return;
-                }
-                const saved = savedChoices.find(
-                    (action: any) => action.player === player
-                );
-                if (saved && saved.choice) {
-                    const picked = options.filter(option =>
-                        saved.choice.includes(option.getId())
-                    );
-                    if (picked.length >= Math.min(min, options.length)) {
-                        callback(picked);
-                        return;
-                    }
-                }
-                // 无原局回答(如 AI 的选择)时按费用排序兜底
-                callback(
-                    [...options]
-                        .sort(
-                            (a, b) =>
-                                b.getCost().getNumeric() -
-                                a.getCost().getNumeric()
-                        )
-                        .slice(
-                            0,
-                            Math.max(min, Math.min(max, options.length))
-                        )
-                );
-            };
-
-            // 线性收集全部事件:startGame + 每个动作(跳过已消化的选择)
-            const allEvents: GameSyncEvent[] = [];
-            allEvents.push(...gameModel.startGame());
-            for (const action of replay.actions) {
-                if (action.type === GameActionType.CardChoice) {
-                    continue;
-                }
-                const events = gameModel.handleAction(action);
-                if (events) {
-                    allEvents.push(...events);
-                }
-            }
-
-            // 单一应用循环:中立视角(-1)让全部事件无差别应用到两个镜像
-            // (正常同步会跳过"自己"的动作以防乐观重复,但刷新后镜像
-            // 没有乐观状态,跳过会丢失自己的资源/手牌历史)。
-            const c38check = allEvents
-                .filter(e => JSON.stringify(e).includes('c38'))
-                .map(e => ({ t: e.type, n: e.number }));
-            console.log(
-                '[ai-restore] events mentioning c38:',
-                JSON.stringify(c38check)
-            );
-            console.log(
-                '[ai-restore] allEvents numbers:',
-                JSON.stringify(
-                    allEvents.map(e => e.number)
-                )
-            );
-            this.replaying = true;
-            const restorePlayerNumber = this.playerNumber;
-            const aiPlayerNumber = this.ais[0].getPlayerNumber();
-            this.playerNumber = -1;
-            (this.ais[0] as any).playerNumber = -1;
-            for (const event of allEvents) {
-                for (const ai of this.ais) {
-                    ai.handleGameEvent(event);
-                }
-                this.handleGameEvent(event);
-            }
-            this.playerNumber = restorePlayerNumber;
-            (this.ais[0] as any).playerNumber = aiPlayerNumber;
-            this.replaying = false;
-            this.finishReplay();
-
-            this.zone.run(() => {
-                this.opponentUsername = decks[1].name;
-                this.startAiWithSpeed(this.speed.speeds.aiTick);
-            });
-            return true;
-        } catch (e) {
-            console.error('AI 对局恢复失败', e);
-            this.clearAiSnapshot();
-            this.reset();
-            return false;
-        }
-    }
-
     private applyScenario(scenario: Scenario, games: Array<Game>) {
         games.forEach(game => {
             scenario.apply(game);
@@ -843,6 +717,7 @@ export class GameManager {
 
     public startP2PBackendGame(isHost: boolean) {
         this.gameType = isHost ? GameType.P2PHost : GameType.P2PJoin;
+        this.markGameMode('local');
         this.playerNumber = isHost ? 0 : 1;
         this.opponentNumber = 1 - this.playerNumber;
         this.opponentDeck = null; // Reset opponent deck

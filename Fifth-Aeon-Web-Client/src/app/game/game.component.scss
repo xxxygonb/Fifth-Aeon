@@ -13,6 +13,18 @@
 .game-area {
     float: left;
     width: calc(100% - 82px);
+    position: relative;
+}
+
+// 非我方行动回合的输入锁:屏蔽棋盘/手牌点击
+.input-lock {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    cursor: not-allowed;
 }
 
 .area {

@@ -37,6 +37,12 @@ export class ClientGame extends Game {
     private nextExpectedEvent = 0;
     protected queryData: Card[] | null = null;
     private shouldAnimate = false;
+    /**
+     * 刷新恢复重放模式：重放期间本地镜像没有"已乐观应用"的自己动作，
+     * 同步处理器必须照常应用本地玩家自己的事件（正常同步会跳过以防重复）。
+     * 由 GameManager 在 StartGame(replay) 与 finishReplay 之间置位。
+     */
+    private replaying = false;
 
     protected onQueryResult: (cards: Card[]) => void = () => null;
     public onSync: () => void = () => null;
@@ -326,6 +332,10 @@ export class ClientGame extends Game {
         this.owningPlayer = player;
     }
 
+    public setReplaying(replaying: boolean) {
+        this.replaying = replaying;
+    }
+
     public queryCards(
         getCards: (game: ServerGame) => Card[],
         callback: (cards: Card[]) => void
@@ -451,18 +461,26 @@ export class ClientGame extends Game {
         return this.getExpectedCards() === 0;
     }
 
+    /** 下一个期望的事件号:时序守卫用(重复/陈旧事件批检测) */
+    public getExpectedEventNumber(): number {
+        return this.nextExpectedEvent;
+    }
+
     /**
      * Syncs an event that happened on the server into the state of this game model
      */
     public syncServerEvent(localPlayerNumber: number, event: GameSyncEvent) {
+        // 时序守卫:正常同步与重放中事件号都必须严格递增。重复的恢复
+        // 事件批(双通道恢复)或断点续放时,序号不匹配的事件必须跳过,
+        // 否则同一事件会被应用两次(资源池翻倍、状态错乱)。
         if (event.number !== this.nextExpectedEvent) {
             console.error(
-                'Event arrived out of order',
+                'Event arrived out of order, skipping',
                 event.number,
-                this.events.length,
                 this.nextExpectedEvent,
                 event
             );
+            return;
         }
         this.events.push(event);
         try {
@@ -537,7 +555,10 @@ export class ClientGame extends Game {
         localPlayerNumber: number,
         event: SyncDamageDistributed
     ) {
-        if (localPlayerNumber === this.getCurrentPlayer().getPlayerNumber()) {
+        if (
+            !this.replaying &&
+            localPlayerNumber === this.getCurrentPlayer().getPlayerNumber()
+        ) {
             return;
         }
         if (!this.attackDamageOrder) {
@@ -552,7 +573,8 @@ export class ClientGame extends Game {
     }
 
     private syncCardEvent(localPlayerNumber: number, event: SyncPlayCard) {
-        if (event.playerNo !== localPlayerNumber) {
+        // 正常对局:自己的出牌已乐观应用,跳过防重复;重放时镜像从零开始,必须应用
+        if (this.replaying || event.playerNo !== localPlayerNumber) {
             const player = this.players[event.playerNo];
             const card = this.unpackCard(event.played);
             if (event.targetIds) {
@@ -579,7 +601,10 @@ export class ClientGame extends Game {
         localPlayerNumber: number,
         event: SyncEnchantmentModified
     ) {
-        if (localPlayerNumber === this.getCurrentPlayer().getPlayerNumber()) {
+        if (
+            !this.replaying &&
+            localPlayerNumber === this.getCurrentPlayer().getPlayerNumber()
+        ) {
             return;
         }
         const enchantment = this.getCardById(
@@ -615,19 +640,22 @@ export class ClientGame extends Game {
     }
 
     private syncTurnStart(localPlayerNumber: number, event: SyncTurnStart) {
-        if (this.turnNum === 1) {
+        // 回合状态由 TurnStart 事件显式驱动(第 1 回合附带调度重建),
+        // 不再依赖弃牌回调的副作用推进回合。
+        // 调度门控用事件的回合数:本地 turnNum 在事件驱动模式下始终滞后。
+        if (event.turnNum === 1) {
             this.mulligan();
-            this.turn = event.turn;
-            this.turnNum = event.turnNum;
-            this.refresh();
         }
+        this.turn = event.turn;
+        this.turnNum = event.turnNum;
+        this.refresh();
     }
 
     private syncPlayResource(
         localPlayerNumber: number,
         event: SyncPlayResource
     ) {
-        if (event.playerNo !== localPlayerNumber) {
+        if (this.replaying || event.playerNo !== localPlayerNumber) {
             this.players[event.playerNo].playResource(event.resource);
         }
     }
@@ -636,13 +664,13 @@ export class ClientGame extends Game {
         localPlayerNumber: number,
         event: SyncAttackToggled
     ) {
-        if (event.player !== localPlayerNumber) {
+        if (this.replaying || event.player !== localPlayerNumber) {
             this.getUnitById(event.unitId).toggleAttacking();
         }
     }
 
     private syncBlock(localPlayerNumber: number, event: SyncBlock) {
-        if (event.player !== localPlayerNumber) {
+        if (this.replaying || event.player !== localPlayerNumber) {
             this.getUnitById(event.blockerId).setBlocking(event.blockedId);
         }
     }
@@ -668,7 +696,11 @@ export class ClientGame extends Game {
     }
 
     private syncChoiceMade(localPlayerNumber: number, event: SyncChoiceMade) {
-        if (event.player !== localPlayerNumber) {
+        // 正常对局:自己的选择已乐观应答,跳过防重复;重放时挂起选择是
+        // 重放 prompt 事件重建出来的,必须应用自己的 ChoiceMade 才能清除,
+        // 否则 currentChoices 永远非空,canTakeAction 恒为 false,
+        // 表现为刷新后一直"必须等待一个选择完成"且无法结束回合。
+        if (this.replaying || event.player !== localPlayerNumber) {
             this.makeDeferredChoice(
                 event.player,
                 this.idsToCards(event.choice)

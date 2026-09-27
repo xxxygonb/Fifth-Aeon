@@ -79,12 +79,38 @@ export class GameServer {
     }
 
     /**
-     * 向一名玩家重发整局游戏：StartGame + 全部历史事件。
-     * 客户端的事件是溯源式的，按顺序重放即可完整重建本地状态。
+     * 向一名玩家重发对局状态。
+     * from > 0:增量模式——客户端已有对局镜像(如 WS 重连),仅补发
+     * 缺失的事件尾巴,不重建镜像;
+     * from = 0:全量模式——StartGame(replay) + 全部历史事件整局重放。
      */
-    public resendState(token: string) {
+    public resendState(token: string, from = 0) {
         const idx = this.playerNum(token);
         if (idx === -1) {
+            return;
+        }
+        if (from > 0 && from <= this.eventLog.length) {
+            const tail = this.eventLog.slice(from);
+            console.log(
+                "Resending incremental events to",
+                this.playerAccounts[idx].username,
+                "from",
+                from,
+                "count",
+                tail.length
+            );
+            if (tail.length > 0) {
+                this.messenger.sendMessageTo(
+                    MessageType.GameEvents,
+                    tail,
+                    token
+                );
+            }
+            this.messenger.sendMessageTo(
+                MessageType.ResendGame,
+                { done: true, incremental: true },
+                token
+            );
             return;
         }
         console.log("Resending game state to", this.playerAccounts[idx].username);
@@ -97,7 +123,7 @@ export class GameServer {
         if (this.eventLog.length > 0) {
             this.messenger.sendMessageTo(MessageType.GameEvents, this.eventLog, token);
         }
-        // 回发确认：客户端收到后退出重放模式（恢复提示/音效/动画副作用）
+        // 回发确认:客户端收到后退出重放模式(恢复提示/音效/动画副作用)
         this.messenger.sendMessageTo(MessageType.ResendGame, { done: true }, token);
     }
 

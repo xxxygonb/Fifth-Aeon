@@ -111,6 +111,9 @@ export class GameComponent implements OnInit, OnDestroy {
 
         if (this.gameManager.isInputEnabled()) {
             this.game.promptCardChoice = this.openCardChooser.bind(this);
+            // 刷新恢复时游戏组件可能晚于重放完成才构造:此时若有
+            // 未应答的挂起选择(重放重建、无 ChoiceMade 事件),补弹选择窗口
+            this.gameManager.reopenPendingChoiceIfNeeded();
         }
 
         this.hotkeys = [
@@ -201,7 +204,9 @@ export class GameComponent implements OnInit, OnDestroy {
         message: string = ''
     ) {
         this.game.deferChoice(player, cards, min, max, callback);
-        if (player !== this.playerNo) {
+        // 重放期间历史中的选择由 ChoiceMade 事件自动应答,不弹窗口;
+        // 若重放结束仍有未应答选择,由 GameManager.finishReplay 重开窗口。
+        if (player !== this.playerNo || this.gameManager.isReplaying()) {
             return;
         }
 
@@ -224,6 +229,14 @@ export class GameComponent implements OnInit, OnDestroy {
     private isMyTurn(): boolean {
         const currentPlayer = this.game.getActivePlayer();
         return currentPlayer === this.playerNo;
+    }
+
+    /**
+     * 非我方行动回合(AI 回合/对手格挡/对手分配伤害)时锁定棋盘输入,
+     * 避免无效点击造成困惑;我方格挡与伤害分配阶段不锁定。
+     */
+    public inputLocked(): boolean {
+        return this.game.getActivePlayer() !== this.playerNo;
     }
     public currPlayerName(): string {
         return this.isMyTurn()

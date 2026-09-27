@@ -99,7 +99,20 @@ if (-not (Test-Path (Join-Path $ClientDir 'node_modules'))) {
     Write-Host '[OK] Client dependencies present'
 }
 
-# ---- 5. Compile server (always incremental, avoids stale dist) ----
+# ---- 5. Model sync check (three game_model copies must stay consistent) ----
+Write-Host '[..] Checking game model sync ...'
+Push-Location $RootDir
+cmd /c "node check-model-sync.js"
+$syncExit = $LASTEXITCODE
+Pop-Location
+if ($syncExit -ne 0) {
+    Write-Host '[WARN] game_model 三副本存在差异,可能导致联机状态不同步(见上方列表)。'
+    Write-Host '[WARN] 建议将 Web-Client 副本同步到其余两份后重试。'
+} else {
+    Write-Host '[OK] Model sync check passed'
+}
+
+# ---- 6. Compile server (always incremental, avoids stale dist) ----
 Write-Host '[..] Compiling server ...'
 Push-Location $ServerDir
 cmd /c "npx gulp scripts >> `"$LogDir\build-server.log`" 2>&1"

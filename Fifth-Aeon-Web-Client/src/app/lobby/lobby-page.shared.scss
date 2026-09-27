@@ -1,0 +1,44 @@
+$vertical-marign: 2vh;
+
+.lobby {
+    width: 100%;
+    text-align: center;
+}
+
+.lobby-card {
+    margin: 0 auto;
+    max-width: 600px;
+    margin-top: $vertical-marign;
+    margin-bottom: $vertical-marign;
+}
+
+mat-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-title-text {
+    flex: 1 1 auto;
+}
+
+.card-icon {
+    flex: 0 0 auto;
+}
+
+button {
+    margin: 20px;
+}
+
+a {
+    text-decoration: none;
+}
+
+.back-row {
+    margin-top: 2vh;
+}
+
+.offline-msg {
+    display: block;
+    padding: 0 20px 10px;
+}

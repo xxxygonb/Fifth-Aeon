@@ -23,7 +23,9 @@ export class LobbyComponent implements OnInit {
             client.getState() !== ClientState.UnAuth &&
             client.getState() !== ClientState.Waiting
         ) {
-            client.returnToLobby();
+            // 已处于 /lobby 子路由时只归位状态、不重复跳转,
+            // 否则会把 /lobby/<子页> 打回大厅首页
+            client.returnToLobby(false);
         }
 
         this.user = auth.getUser() as UserData;

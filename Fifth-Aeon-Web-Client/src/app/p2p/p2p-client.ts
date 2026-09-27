@@ -1,11 +1,9 @@
-import { Injectable } from '@angular/core';
 import { ISignalingService, SignalMessage } from './signaling/signaling-service';
 import { P2PTransport } from '../p2p-transport';
 import { Observable, Subject, Subscription } from 'rxjs';
 
 import * as SimplePeer from 'simple-peer';
 
-@Injectable()
 export class P2PClient implements P2PTransport {
     private peer: SimplePeer.Instance | null = null;
     private connectedSubject = new Subject<boolean>();
