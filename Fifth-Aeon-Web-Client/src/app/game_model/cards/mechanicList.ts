@@ -11,6 +11,7 @@ import * as dealDamage from './mechanics/dealDamage';
 import * as decaySpecials from './mechanics/decaySpecials';
 import * as draw from './mechanics/draw';
 import * as enchantmentCounters from './mechanics/enchantmentCounters';
+import * as fury from './mechanics/fury';
 import * as growthSpecials from './mechanics/growthSpecials';
 import * as heal from './mechanics/heal';
 import * as mindControl from './mechanics/mindControl';
@@ -129,6 +130,7 @@ class MechanicList {
 export const mechanicList = new MechanicList();
 const sources = [
     skills,
+    fury,
     poison,
     buff,
     lordship,

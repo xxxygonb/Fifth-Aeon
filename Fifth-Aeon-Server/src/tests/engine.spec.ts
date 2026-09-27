@@ -6,6 +6,7 @@ import { GamePhase } from '../game_model/game';
 import { ServerGame } from '../game_model/serverGame';
 import { CardType } from '../game_model/card-types/card';
 import { GameActionType } from '../game_model/events/gameAction';
+import { Fury } from '../game_model/cards/mechanics/fury';
 
 /**
  * ServerGame 动作验证回归测试（权威服务器使用的正是本目录的 game_model 副本）。
@@ -333,6 +334,35 @@ describe('ServerGame 动作验证回归', () => {
             '用自己的单位阻挡应被接受'
         ).to.not.equal(null);
         expect(defenderUnit.getBlockedUnitId()).to.equal(attacker.getId());
+    });
+
+    it('狂怒(Fury): 每次受到伤害后获得 +1/+1(教程示例效果器)', () => {
+        const game = startWithMulligans();
+        const unitCard = cardList
+            .getCards()
+            .find(c => c.getCardType() === CardType.Unit)!;
+        const unit = game.playGeneratedUnit(
+            0,
+            cardList.getCard(unitCard.getDataId())
+        );
+        // 挂上教程示例效果器「狂怒」(enter 在单位于场上时立即生效)
+        unit.addMechanic(new Fury(), game);
+        const beforeDamage = unit.getDamage();
+        const beforeMaxLife = unit.getMaxLife();
+        const beforeLife = unit.getLife();
+
+        unit.takeDamage(2, unit);
+
+        // 受到 2 点伤害 → 狂怒触发一次:攻击力 +1,生命上限 +1,
+        // 当前生命 = 原生命 - 2(伤害) + 1(增益)
+        expect(unit.getDamage()).to.equal(beforeDamage + 1);
+        expect(unit.getMaxLife()).to.equal(beforeMaxLife + 1);
+        expect(unit.getLife()).to.equal(beforeLife - 2 + 1);
+
+        // 再次受伤再次触发(每次受伤害都触发)
+        unit.takeDamage(1, unit);
+        expect(unit.getDamage()).to.equal(beforeDamage + 2);
+        expect(unit.getMaxLife()).to.equal(beforeMaxLife + 2);
     });
 });
 

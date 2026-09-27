@@ -279,8 +279,23 @@ export class GameComponent implements OnInit, OnDestroy {
         }
     }
 
+    /**
+     * 只读查看牌堆(墓地/弃牌堆等):直接打开选牌器的查看模式,
+     * 不注册游戏待应答选择(deferChoice),不会阻塞正常出牌。
+     * max=0 时 CardChooserComponent 显示"查看牌堆"文案且禁止选中。
+     */
+    public viewCards(cards: Array<Card>) {
+        const config = new MatDialogConfig();
+        config.maxWidth = '95vw';
+        const dialogRef = this.dialog.open(CardChooserComponent, config);
+        dialogRef.componentInstance.cards = cards;
+        dialogRef.componentInstance.min = 0;
+        dialogRef.componentInstance.max = 0;
+        dialogRef.componentInstance.setPage();
+    }
+
     public viewCrypt(player: number) {
-        this.openCardChooser(this.playerNo, this.game.getCrypt(player), 0);
+        this.viewCards(this.game.getCrypt(player));
     }
 
     public canPlayResource() {

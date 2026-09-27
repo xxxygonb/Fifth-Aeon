@@ -1,13 +1,9 @@
 import { Card, CardType } from '../../card-types/card';
 import { Game } from '../../game';
-import { EvalContext, Mechanic } from '../../mechanic';
+import { EvalContext } from '../../mechanic';
 import { Unit, UnitType } from '../../card-types/unit';
 import { t, tf } from '../../i18n';
-
-abstract class Skill extends Mechanic {
-    public static readonly grantable = true;
-    protected static validCardTypes = new Set([CardType.Unit, CardType.Item]);
-}
+import { Skill } from './skill';
 
 export class Flying extends Skill {
     protected static id = 'Flying';

@@ -6,8 +6,11 @@ import {
     ParameterType,
 } from '../../game_model/cards/parameters';
 import { ResourceType } from '../../game_model/resource';
+import { ResourcePrototype } from '../../game_model/resource';
 import { UnitType } from 'app/game_model/card-types/unit';
 import { mechanicList } from 'app/game_model/cards/mechanicList';
+import { I18nService } from '../../i18n/i18n.service';
+import { formatMechanicLabel } from '../mechanic-labels';
 
 enum EditorType {
     Numeric,
@@ -40,6 +43,9 @@ export class ParameterEditorComponent implements OnInit {
     /** 搜索结果缓存：只在输入时更新（避免变更检测循环） */
     public searchResults: { id: string; name: string }[] = [];
 
+    /** 资源参数（ParameterType.Resource）可编辑的四个阵营需求 */
+    public resourceTypes = ['Growth', 'Decay', 'Renewal', 'Synthesis'];
+
     public trackOption(index: number, option: { id: string }) {
         return option.id;
     }
@@ -50,6 +56,7 @@ export class ParameterEditorComponent implements OnInit {
     private unitEnumValues = this.getEnumValues(UnitType);
     private abilityValues = this.getAbilityValues();
 
+    constructor(private i18n: I18nService) {}
 
     public getEditorType() {
         if (
@@ -106,6 +113,14 @@ export class ParameterEditorComponent implements OnInit {
             }
         }
         return results;
+    }
+
+    /** 下拉项显示名：Ability 用效果器标签（名称 · 说明），其余走全局字典 */
+    public optionLabel(item: EnumValue): string {
+        if (this.type === ParameterType.Ability) {
+            return formatMechanicLabel(item.id, this.i18n);
+        }
+        return this.i18n.tr(item.name);
     }
 
     public onChange() {
@@ -191,5 +206,33 @@ export class ParameterEditorComponent implements OnInit {
         return abilityIds.map((id) => {
             return { id, name: id };
         });
+    }
+
+    // ---- 资源参数（ParameterType.Resource）图形化编辑 ----
+
+    /** 读资源字段；参数尚未初始化时显示与服务端默认(new Resource(1,1))一致的值 */
+    public getResourceField(field: string): number {
+        if (typeof this.data === 'object' && this.data !== null) {
+            return (
+                (this.data as ResourcePrototype)[
+                    field as keyof ResourcePrototype
+                ] || 0
+            );
+        }
+        return field === 'energy' || field === 'maxEnergy' ? 1 : 0;
+    }
+
+    /** 写资源字段：整体替换为新的 ResourcePrototype JSON 并上报 */
+    public setResourceField(field: string, value: string) {
+        const base: ResourcePrototype =
+            typeof this.data === 'object' && this.data !== null
+                ? { ...(this.data as ResourcePrototype) }
+                : { energy: 1, maxEnergy: 1, synthesis: 0, growth: 0, decay: 0, renewal: 0 };
+        const num = parseInt(value, 10);
+        base[field as keyof ResourcePrototype] = isNaN(num)
+            ? 0
+            : Math.max(0, Math.min(99, num));
+        this.data = base;
+        this.change.emit(this.data);
     }
 }

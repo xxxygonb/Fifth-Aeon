@@ -54,6 +54,7 @@ export const zhCN: Record<string, string> = {
     'Aquatic.': '水栖。',
     'Ranged.': '远程。',
     'Lifesteal.': '生命窃取。',
+    'Fury.': '狂怒。',
     'Lethal.': '致命。',
     'Shielded.': '护盾。',
     'Relentless.': '无情。',

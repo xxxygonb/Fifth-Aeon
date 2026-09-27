@@ -1,4 +1,4 @@
-﻿import { Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -19,6 +19,7 @@ import { GameType } from './gameType';
 import { aiManager } from './game_model/aiManager';
 import { P2PClient } from './p2p/p2p-client';
 import { ISignalingService } from './p2p/signaling/signaling-service';
+import { P2PDialogComponent } from './lobby/p2p-dialog/p2p-dialog.component';
 import { log } from './logger';
 import { environment } from '../environments/environment';
 
@@ -534,9 +535,20 @@ export class WebClient {
         this.router.navigate(['/select']);
     }
     public openP2PDialog(autoJoinRoom?: string) {
-        // Store the pending join room in WebClient state.
-        this.pendingP2PRoom = autoJoinRoom;
-        this.router.navigate(['/lobby']);
+        if (autoJoinRoom) {
+            // 链接自动加入(landing/设置阶段调用):大厅组件未挂载,
+            // 先记下房间号,由 LobbyComponent 构造时补弹对话框
+            this.pendingP2PRoom = autoJoinRoom;
+            this.router.navigate(['/lobby']);
+            return;
+        }
+        // 大厅内直接点击「P2P 对战」:直接弹对话框。
+        // (旧实现走 pendingP2PRoom 间接层,但此处无房间号,
+        //  大厅判断 pending 为假不弹窗 → 表现为"跳回主界面")
+        this.dialog.open(P2PDialogComponent, {
+            width: '600px',
+            disableClose: false
+        });
     }
 
     public pendingP2PRoom: string | undefined;

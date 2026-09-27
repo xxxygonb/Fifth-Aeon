@@ -18,7 +18,7 @@
             [placeholder]="name | tr"
         >
             <mat-option *ngFor="let item of getValues()" [value]="item.id">{{
-                item.name | tr
+                optionLabel(item)
             }}</mat-option>
         </mat-select>
     </mat-form-field>
@@ -55,5 +55,45 @@
         </ng-container>
     </div>
 
-    <p *ngSwitchCase="EditorType.Resource">{{ 'Resource PLaceholder' | tr }}</p>
+    <!-- 资源参数：能量 + 能量上限 + 四阵营需求，图形化编辑 -->
+    <div class="resource-editor" *ngSwitchCase="EditorType.Resource">
+        <div class="resource-grid">
+            <mat-form-field class="resource-field">
+                <mat-label>{{ 'Energy' | tr }}</mat-label>
+                <input
+                    matInput
+                    type="number"
+                    min="0"
+                    max="99"
+                    [ngModel]="getResourceField('energy')"
+                    (ngModelChange)="setResourceField('energy', $event)"
+                />
+            </mat-form-field>
+            <mat-form-field class="resource-field">
+                <mat-label>{{ 'Max Energy' | tr }}</mat-label>
+                <input
+                    matInput
+                    type="number"
+                    min="0"
+                    max="99"
+                    [ngModel]="getResourceField('maxEnergy')"
+                    (ngModelChange)="setResourceField('maxEnergy', $event)"
+                />
+            </mat-form-field>
+            <mat-form-field
+                class="resource-field"
+                *ngFor="let resType of resourceTypes"
+            >
+                <mat-label>{{ resType | tr }}</mat-label>
+                <input
+                    matInput
+                    type="number"
+                    min="0"
+                    max="99"
+                    [ngModel]="getResourceField(resType.toLowerCase())"
+                    (ngModelChange)="setResourceField(resType.toLowerCase(), $event)"
+                />
+            </mat-form-field>
+        </div>
+    </div>
 </ng-container>

@@ -55,3 +55,18 @@
     color: #999;
     font-size: 12px;
 }
+
+/* 资源参数：2 列紧凑网格（能量/上限/四阵营） */
+.resource-editor {
+    min-width: 180px;
+}
+
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(80px, 1fr));
+    gap: 2px 10px;
+}
+
+.resource-grid mat-form-field {
+    width: 100%;
+}

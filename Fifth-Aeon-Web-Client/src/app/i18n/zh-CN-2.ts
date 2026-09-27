@@ -109,6 +109,7 @@ export const zhCNUI2: Record<string, string> = {
     Cycle: '循环',
     Rush: '突进',
     Lifesteal: '生命窃取',
+    Fury: '狂怒',
     Poisoned: '中毒',
     Poison: '施毒',
     Venomous: '剧毒',
@@ -175,6 +176,8 @@ export const zhCNUI2: Record<string, string> = {
     'Immune to sleep and poison.': '免疫睡眠和中毒。',
     'Whenever this unit dies, play it from the crypt at the end of the turn (it keeps this ability).':
         '每当此单位死亡时，在回合结束时将它从墓地再次打出（它保留此能力）。',
+    'Whenever this unit takes damage, it gains +1/+1.':
+        '每当此单位受到伤害，它获得 +1/+1。',
     'A 0/1 structure that cannot attack.': '一个 0/1、无法攻击的建筑。',
     // Stat tooltips
     '{name} {cost}': '{name} {cost}',
@@ -465,8 +468,8 @@ export const zhCNUI2: Record<string, string> = {
     'Move Up': '上移',
     'Move Down': '下移',
     'Delete Mechanic': '删除机制',
-    'Add Mechanic': '添加机制',
-    'Resource PLaceholder': '资源参数（暂不支持图形化编辑）',
+    'Energy': '能量',
+    'Max Energy': '能量上限',
     'Set Name': '系列名称',
     'Set Description': '系列描述',
     'Public': '公开',
@@ -551,10 +554,10 @@ export const zhCNUI2: Record<string, string> = {
     UnitEntersPlay: '单位入场 · 任意单位进场时',
 
     // ---- Editor UI（卡牌编辑器界面文案；en 模式回退英文 key） ----
-    'Existing Mechanics (effects of this card)': '现有机制（这张卡的效果）',
+    'Existing Mechanics (effects of this card)': '效果器',
     'No mechanics yet. Click the + button below to add one.':
-        '这张卡还没有任何效果。点击下方 ➕ 添加机制。',
-    'Mechanic (effect)': '机制（效果）',
+        '这张卡还没有任何效果器。点击下方 ➕ 添加效果器。',
+    'Mechanic (effect)': '效果器',
     'Trigger (when it resolves)': '触发时机（什么时候生效）',
     'Target (who it affects)': '目标选择（对谁生效）',
     'Use the card target': '沿用卡牌自身的目标',
@@ -562,7 +565,8 @@ export const zhCNUI2: Record<string, string> = {
         '上移（效果按从上到下顺序结算）',
     'Move down (effects resolve top to bottom)':
         '下移（效果按从上到下顺序结算）',
-    'Delete this mechanic': '删除这条机制',
+    'Delete this mechanic': '删除这条效果器',
+    'Add Mechanic': '添加效果器',
     'Selected: ': '已选：',
     'Search cards by name': '输入卡名搜索',
     'No matching cards': '没有匹配的卡牌',

@@ -35,15 +35,14 @@ export class CardEditorComponent implements OnInit, OnDestroy {
     /** 保存按钮状态：idle | saving | saved | error */
     public saveState: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
 
-    /** 卡面预览自动刷新定时器（离开页面必须清理，否则会叠加常驻定时器） */
-    private previewInterval: any;
+    /** 预览防抖句柄（编辑事件触发刷新，离开页面清理） */
+    private previewRefreshHandle: any;
 
     constructor(
         route: ActivatedRoute,
         router: Router,
         private editorData: EditorDataService
     ) {
-        this.previewInterval = setInterval(() => this.refreshPreview(), 3000);
         route.paramMap.subscribe(params => {
             const id = params.get('id') as string;
             const card = editorData.getCard(id);
@@ -86,7 +85,11 @@ export class CardEditorComponent implements OnInit, OnDestroy {
     }
 
     public refreshPreview() {
-        this.previewCard = cardList.buildInstance(this.data);
+        try {
+            this.previewCard = cardList.buildInstance(this.data);
+        } catch {
+            // 数据暂处非法中间态（如效果器参数未填完）时保留上一次预览
+        }
     }
 
     /** 手动保存当前编辑的卡牌（含卡组集合），并给出保存结果反馈 */
@@ -129,17 +132,25 @@ export class CardEditorComponent implements OnInit, OnDestroy {
     ngOnInit() {}
 
     ngOnDestroy() {
-        if (this.previewInterval) {
-            clearInterval(this.previewInterval);
-            this.previewInterval = null;
+        if (this.previewRefreshHandle) {
+            clearTimeout(this.previewRefreshHandle);
+            this.previewRefreshHandle = null;
         }
     }
 
-    /** 任意编辑交互（含子编辑器组件冒泡的 input/change/按钮点击）都置脏标记 */
+    /** 任意编辑交互（含子编辑器组件冒泡的 input/change/按钮点击）：
+     *  置脏保存标记，并防抖刷新卡面预览（替代旧的 3 秒轮询） */
     @HostListener('input')
     @HostListener('change')
     @HostListener('click')
     public onEditorActivity() {
         this.editorData.markDirty();
+        if (this.previewRefreshHandle) {
+            clearTimeout(this.previewRefreshHandle);
+        }
+        this.previewRefreshHandle = setTimeout(() => {
+            this.previewRefreshHandle = null;
+            this.refreshPreview();
+        }, 150);
     }
 }

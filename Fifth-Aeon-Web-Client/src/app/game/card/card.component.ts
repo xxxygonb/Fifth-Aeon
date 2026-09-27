@@ -66,6 +66,10 @@ keywordsDefs.set('Cycle', 'Triggers at the end of every turn.');
 // Powers
 keywordsDefs.set('Rush', 'Can attack the turn it is played.');
 keywordsDefs.set(
+    'Fury',
+    'Whenever this unit takes damage, it gains +1/+1.'
+);
+keywordsDefs.set(
     'Lifesteal',
     'When this unit deals damage its owner gains that much life.'
 );
@@ -126,6 +130,7 @@ const zhKeywordAliases: Array<[string, string]> = [
     ['致命一击', 'Lethal Strike'],
     ['亡魂收割', 'Soul Reap'],
     ['生命窃取', 'Lifesteal'],
+    ['狂怒', 'Fury'],
     ['机械造物', 'Mechanical'],
     ['生物单位', 'Biological'],
     ['不可阻挡', 'Unblockable'],
