@@ -57,11 +57,11 @@ Card（卡牌）
 
 ## 2. 前置知识：代码放在哪里
 
-项目有三个仓库，**共享游戏规则库 Fifth-Aeon-Model 被复制到 Server 和 Web-Client 各一份**（`git submodule` 引用）：
+项目是同一仓库的三个目录，**共享游戏规则库 Fifth-Aeon-Model 是唯一权威源**，Server 与 Web-Client 里的 `game_model` 是**自动生成的副本**（非 git submodule）：
 
 ```
-g:\Fifth-Aeon\
-├── Fifth-Aeon-Model\                  ← ★ 规范副本：卡牌在这里写
+Fifth-Aeon\
+├── Fifth-Aeon-Model\                  ← ★ 权威源：卡牌在这里写
 │   ├── cards\
 │   │   ├── growthCards.ts             ← 生长阵营卡牌（也是本教程示例位置）
 │   │   ├── decayCards.ts              ← 凋零阵营
@@ -78,12 +78,12 @@ g:\Fifth-Aeon\
 │   ├── mechanic.ts                    ← Mechanic 基类体系
 │   ├── resource.ts                    ← 费用系统
 │   └── i18n\                          ← 文案翻译字典
-├── Fifth-Aeon-Server\src\game_model\  ← Model 的 Server 副本（改完同步）
-├── Fifth-Aeon-Web-Client\src\app\game_model\ ← Model 的 Client 副本（改完同步）
+├── Fifth-Aeon-Server\src\game_model\  ← 生成的副本（禁止手改，sync 自动刷新）
+├── Fifth-Aeon-Web-Client\src\app\game_model\ ← 生成的副本（同上）
 └── docs\
 ```
 
-**黄金规则**：卡牌逻辑只写在 `Fifth-Aeon-Model`，然后把改动**同步**到另外两个副本（见第 14 节）。三个副本中 `animator.ts`、`card-types/item.ts`、`serverGame.ts` 是历史遗留的有意差异文件，**不要互相覆盖**。
+**黄金规则**：卡牌逻辑只写在 `Fifth-Aeon-Model`，然后运行 `node model-sync.js` 自动同步两个副本（见第 14 节）。副本目录唯一允许的差异是 Server 端 `serverGame.ts`（服务端回放扩展，已在 model-sync.js 白名单登记）；其余文件一律以 Model 为准覆盖。
 
 ## 3. 快速上手：五步添加一张单位卡
 
@@ -128,9 +128,9 @@ export function mossGuardian() {
 import { Shielded } from './mechanics/skills';
 ```
 
-### 第 4 步：同步到另外两个副本
+### 第 4 步：同步到两个副本
 
-把修改的文件复制到 `Fifth-Aeon-Server\src\game_model\cards\` 和 `Fifth-Aeon-Web-Client\src\app\game_model\cards\`（见第 14 节的完整清单与验证方法）。
+在仓库根目录运行 `node model-sync.js`，Model 的改动会自动刷到 Server/Client 两副本（见第 14 节）。
 
 ### 第 5 步：编译验证 + 浏览器确认
 
@@ -139,9 +139,10 @@ import { Shielded } from './mechanics/skills';
 #    Fifth-Aeon-Model\i18n\zh-CN-cards.ts 追加：
 #    'Moss Guardian': '苔藓守卫',
 
-# 2. Server 编译 + 全卡验证（见第 14 节工具）
-cd g:\Fifth-Aeon\Fifth-Aeon-Server; npx gulp scripts
-cd g:\Fifth-Aeon; node scan-all-cards.js     # 应输出 残留: 0 张卡
+# 2. 同步副本 + Server 编译 + 全卡验证（见第 14 节工具）
+cd Fifth-Aeon; node model-sync.js
+cd Fifth-Aeon\Fifth-Aeon-Server; npx gulp scripts
+cd ..; node scan-all-cards.js     # 应输出 残留: 0 张卡
 
 # 3. 浏览器实测
 #    启动游戏（start.bat）→ 大厅 → 卡牌编辑器能搜到新卡 → 开一局 AI 对局打出它
@@ -242,7 +243,7 @@ new Item(dataId, name, imageUrl, cost: Resource,
          damage: number, life: number, mechanics: Mechanic[])
 ```
 
-`hostTargeter` 决定物品**装备到谁身上**（如 `new FriendlyUnit()`）。注意：`card-types/item.ts` 是三副本差异文件，修改它需要按各副本现状分别改（见第 2 节黄金规则）。
+`hostTargeter` 决定物品**装备到谁身上**（如 `new FriendlyUnit()`）。修改 `card-types/item.ts` 只改 Model 一份，然后 `node model-sync.js` 同步副本（见第 2 节黄金规则）。
 
 ### 可选的 text 参数
 
@@ -780,58 +781,60 @@ public evaluateUnitTarget(source: Card, target: Unit, game: Game, evaluated: Eva
 
 - 卡面图片存放在 **Web-Client** 的 `src/assets/png/`（如 `wolf-head.png`、`beech.png`）。
 - 工厂函数的 `imageUrl` 只写文件名，如 `'moss-guardian.png'`。
-- 图片是黑白剪影风格（配合阵营底色）。新增图片记得**只在 Client 仓库放**（Server/Model 不需要），并同步两份子模块时不要覆盖 assets。
+- 图片是黑白剪影风格（配合阵营底色）。新增图片记得**只放 Client 的 assets**（Server/Model 不需要，assets 也不参与 model-sync）。
 - 忘记放图片不会崩溃，卡面显示空白图——但仍请补齐。
 
-## 14. 同步三副本与验证清单
+## 14. 同步副本与验证清单
 
 ### 修改文件清单（添加一张新卡通常涉及）
 
-| 文件 | 副本 |
+| 文件 | 位置 |
 |---|---|
-| `cards/<阵营>Cards.ts` | Model + Server 副本 + Client 副本（3 处） |
-| `cards/mechanics/xxx.ts`（仅新增机制时） | 3 处 |
-| `i18n/zh-CN-cards.ts`（卡名） | 3 处 |
-| `i18n/zh-CN.ts`（仅新机制文本时） | 3 处 |
-| `Web-Client/src/assets/png/xxx.png`（新图片） | 仅 Client |
+| `cards/<阵营>Cards.ts` | 只改 Model，然后 `node model-sync.js` 自动同步两副本 |
+| `cards/mechanics/xxx.ts`（仅新增机制时） | 同上 |
+| `i18n/zh-CN-cards.ts`（卡名） | 同上 |
+| `i18n/zh-CN.ts`（仅新机制文本时） | 同上 |
+| `Web-Client/src/assets/png/xxx.png`（新图片） | 仅 Client（assets 不参与同步） |
 
-### 同步命令（PowerShell 示例，单文件）
+### 同步命令（在仓库根目录执行）
 
 ```powershell
-$f = 'cards\growthCards.ts'
-Copy-Item "Fifth-Aeon-Model\$f" "Fifth-Aeon-Server\src\game_model\$f" -Force
-Copy-Item "Fifth-Aeon-Model\$f" "Fifth-Aeon-Web-Client\src\app\game_model\$f" -Force
+node model-sync.js           # 同步 Model → Server/Client 两副本
+node model-sync.js --check   # 只校验（CI 用，漂移退出码 1）
 ```
 
-> ⚠️ `animator.ts`、`card-types/item.ts`、`serverGame.ts` 是差异文件，**永远不要**用上面命令互相覆盖；改这三个文件时需分别阅读各副本现状。
+> ⚠️ 副本目录是生成产物，**禁止手工编辑**。副本唯一白名单差异：Server 端 `serverGame.ts`（服务端回放扩展）。如需登记新的副本差异文件，在 model-sync.js 的 `OVERRIDE_WHITELIST` 显式添加。
 
 ### 验证清单（按顺序执行）
 
 ```powershell
-# 1. Server 严格类型检查（gulp 宽松模式会掩盖类型错误）
-cd g:\Fifth-Aeon\Fifth-Aeon-Server
+# 1. 同步副本
+node model-sync.js
+
+# 2. Server 严格类型检查（gulp 宽松模式会掩盖类型错误）
+cd Fifth-Aeon-Server
 npx tsc -p tsconfig.json --noEmit     # 期望：无输出
 
-# 2. Server 编译产物
+# 3. Server 编译产物
 npx gulp scripts
 
-# 3. 全卡实例化 + 文案残留验证（138+N 张卡）
-cd g:\Fifth-Aeon
+# 4. 全卡实例化 + 文案残留验证
+cd ..
 node scan-all-cards.js                # 期望：残留 0 张卡
 node check-i18n.js                    # 期望：Model/Client 字典缺失 (0)
 
-# 4. Client 构建
-cd g:\Fifth-Aeon\Fifth-Aeon-Web-Client
+# 5. Client 构建
+cd Fifth-Aeon-Web-Client
 npx ng build                          # 期望：Compiled successfully
 
-# 5. 浏览器实测
+# 6. 浏览器实测
 # start.bat 启动 → 卡牌编辑器搜新卡名 → 确认文本/图片/机制下拉正常
 # → 开一局 AI 对局打出新卡 → 观察效果与控制台报错
 ```
 
 ## 15. 常见坑
 
-1. **忘记同步副本**：Model 改完直接测试，Server 用的是旧副本——联机对局里新卡不生效或行为不一致。养成"改完即同步"的习惯，并跑 `scan-all-cards.js` 验证。
+1. **忘记同步副本**：Model 改完直接测试，Server 用的是旧副本——联机对局里新卡不生效或行为不一致。养成"改完即 `node model-sync.js`"的习惯（启动脚本也会自动同步），并跑 `scan-all-cards.js` 验证。
 2. **dataId 不唯一**：`cardList.addFactory` 用 dataId 去重，重复 ID 会**静默覆盖**已有卡。ID 用大驼峰英文（`MossGuardian`），定稿后永不更改（存档与协议引用它）。
 3. **卡名忘加翻译**：`getName()` 走 `t(name)`，字典缺失回退英文。中文环境会显示英文卡名——`check-i18n.js` 能查出缺失。
 4. **文本模板 key 与英文原文不一致**：`tf('Give {target} {buff}.', ...)` 的 key 必须与 `zh-CN.ts` 里的词条**逐字符一致**（含标点和空格），否则回退英文。
@@ -840,7 +843,7 @@ npx ng build                          # 期望：Compiled successfully
 7. **修改 `htmlText()` 时打乱替换顺序**：先加粗后转标记会把 `[...]` 标记切碎成 `[deleted]`、`[/耗尽]` 这类残片显示在卡面上（2026-09 已修复的线上问题）。顺序永远是：**标记转换 → 关键词加粗**。
 8. **在机制里写 UI/动画代码**：Model 是纯规则库（Server/Client 共用），任何 DOM/动画引用都会导致 Server 编译失败。动画属于 Client 的 `animator.ts` 体系。
 9. **费用忘写阵营需求**：`new Resource(3)` 与 `new Resource(3, 0, {Growth:1,...})` 是不同的卡。阵营卡请保持与同阵营卡一致的需求风格。
-10. **git 提交漏掉子模块**：三个仓库是独立 git 仓库（外加 Model 的 submodule 指针），提交时确认三处都提交，且 Client/Server 仓库的 submodule 指针更新。
+10. **误改副本目录**：`Server/src/game_model` 与 `Client/src/app/game_model` 是生成产物，手改会被下次同步覆盖。规则改动只改 Model。
 
 ---
 
@@ -870,7 +873,7 @@ export function mossGuardian() {
 
 ```text
 ③ 图片：Web-Client/src/assets/png/moss-guardian.png
-④ 同步：growthCards.ts、zh-CN-cards.ts → 两份子模块
+④ 同步：node model-sync.js（Model → 两副本自动刷新）
 ⑤ 验证：tsc --noEmit → gulp scripts → scan-all-cards.js（0 残留）→ check-i18n.js（0 缺失）→ ng build → 浏览器实测
 ```
 

@@ -1,45 +1,15 @@
-import { Queue } from 'typescript-collections';
+﻿import { Queue } from 'typescript-collections';
 import { Subscription } from 'rxjs';
 import { getWsUrl } from './url';
 import { NetworkInterface } from './network-interface';
 import { P2PTransport } from './p2p-transport';
 import { environment } from '../environments/environment';
 
-export enum MessageType {
-    // General
-    Info,
-    ClientError,
-    Connect,
-    Ping,
-
-    // Accounts
-    AnonymousLogin,
-    LoginResponce,
-    SetDeck,
-
-    // Queuing
-    JoinQueue,
-    ExitQueue,
-    QueueJoined,
-    StartGame,
-    NewPrivateGame,
-    JoinPrivateGame,
-    CancelPrivateGame,
-    PrivateGameReady,
-    TransferScenario,
-
-    // In Game
-    GameEvent,
-    GameEvents,
-    GameAction,
-    ResendGame,
-}
-
-export interface Message {
-    source: string;
-    type: MessageType;
-    data: any;
-}
+// 消息协议统一定义在共享模型(Fifth-Aeon-Model/messages.ts, 经 model-sync 同步)。
+// 这里再导出以保持既有 `import { MessageType } from '../messenger'` 兼容。
+export { MessageType, Message } from './game_model/messages';
+import { Message, MessageType } from './game_model/messages';
+import { log } from './logger';
 
 // Minimum time before attempting to reconnect again;
 const minConnectTime = 1000 * 5;
@@ -138,7 +108,7 @@ export class Messenger implements NetworkInterface {
             this.url.startsWith('ws://') &&
             navigator.userAgent.search('Firefox') !== -1
         ) {
-            console.warn(
+            log.warn(
                 'Cannot connect to ws from https page on Firefox, abort connection'
             );
             this.enabled = false;
@@ -150,7 +120,7 @@ export class Messenger implements NetworkInterface {
             if (!this.id || !this.ws || this.ws.readyState === this.ws.OPEN) {
                 return;
             }
-            console.log('Attempting automatic reconnect');
+            log.debug('Attempting automatic reconnect');
             this.connect();
         }, autoReconnectTime);
         this.pingTimer = setInterval(() => {
@@ -223,16 +193,16 @@ export class Messenger implements NetworkInterface {
     private onConnect() {
         this.onConnectChange(true);
         this.sendMessageToServer(MessageType.Connect, {});
-        console.log('Connected, requesting queued messages.');
+        log.debug('Connected, requesting queued messages.');
         // Flush messages queued while offline (SetDeck, JoinQueue, ...)
         this.emptyMessageQueue();
     }
 
     private onConnectChange(isConnected: boolean) {
         if (!isConnected) {
-            console.warn('Multiplayer connection lost');
+            log.warn('Multiplayer connection lost');
         } else {
-            console.log('now connected');
+            log.debug('now connected');
         }
         this.connectChange(isConnected);
     }
@@ -249,14 +219,14 @@ export class Messenger implements NetworkInterface {
         if (!(message.data && message.type !== undefined)) {
             // We relax the check for P2P messages which might lack source
             // But we really need type and data.
-            console.error('Invalid message', message);
+            log.error('Invalid message', message);
             return;
         }
         const cb = this.handlers.get(message.type);
         if (cb) {
             cb(message);
         } else {
-            console.error(
+            log.error(
                 'No handler for message type',
                 message.type,
                 'in',
@@ -274,7 +244,7 @@ export class Messenger implements NetworkInterface {
                 }
                 return parsed as Message;
             } catch (e) {
-                console.error('Could not parse message json');
+                log.error('Could not parse message json');
                 return null;
             }
         } else {

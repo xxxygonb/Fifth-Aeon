@@ -13,10 +13,10 @@
             <mat-icon>grade</mat-icon>
             <span> {{ 'Open Packs' | tr }} </span>
         </button>
-        <button mat-raised-button color="primary" *ngIf="client.isConnectedToLocalServer()"
+        <button mat-raised-button color="primary" *ngIf="client.isConnected() && !client.isOffline()"
             (click)="client.selectDeckAndStartGame(3)">
             <mat-icon>android</mat-icon>
-            <span> {{ 'Play Local Server A.I' | tr }} </span>
+            <span> {{ 'Play Server A.I' | tr }} </span>
         </button>
     </mat-card>
 

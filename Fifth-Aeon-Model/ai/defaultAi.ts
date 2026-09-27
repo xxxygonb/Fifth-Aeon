@@ -53,6 +53,8 @@ interface EvaluatedAction {
 export class DefaultAI extends AI {
     protected enemyNumber: number;
     protected aiPlayer: Player;
+    /** 是否启用攻击计划模拟(仅 Expert 开启,避免低难度额外开销) */
+    protected useAttackSimulation = false;
 
     public static getDeckbuilder(): DeckBuilder {
         return new RandomBuilder();
@@ -552,6 +554,8 @@ export class DefaultAI extends AI {
             return true;
         }
 
+        // 规划:对手视角无法有利阻挡才攻(1v1 模型),Expert 可留守
+        let plan: Unit[] = [];
         for (const attacker of potentialAttackers) {
             let hasBlocker = false;
             for (const blocker of potentialBlockers) {
@@ -564,10 +568,29 @@ export class DefaultAI extends AI {
                 if (this.reserveDefense(attacker)) {
                     continue;
                 }
-                this.game.declareAttacker(attacker);
+                plan.push(attacker);
             }
         }
+
+        // A4:Expert 用引擎级推演精炼计划(贪心防守假设下的期望收益)
+        plan = this.refineAttackPlan(plan, potentialBlockers, enemyLife);
+
+        for (const attacker of plan) {
+            this.game.declareAttacker(attacker);
+        }
         return true;
+    }
+
+    /**
+     * 攻击计划精炼钩子(A4)。默认(无模拟器/非 Expert)原样返回;
+     * Expert 覆写为「在克隆对局上对比 全力攻 vs 不攻 的引擎结算收益」。
+     */
+    protected refineAttackPlan(
+        plan: Unit[],
+        potentialBlockers: Unit[],
+        enemyLife: number
+    ): Unit[] {
+        return plan;
     }
 
     /**

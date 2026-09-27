@@ -74,7 +74,7 @@ export class Item extends Permanent {
         this.attach(host, game);
     }
 
-    public getText(game: Game, hasPrefix: boolean = true): string {
+    public getText(game: Game | undefined = undefined, hasPrefix: boolean = true): string {
         const prefix = hasPrefix
             ? tf('Attaches to {target}. ', {
                   target: this.hostTargeter.getTextOrPronoun()
@@ -94,7 +94,9 @@ export class Item extends Permanent {
             clone.enter(host, game);
             if (clone instanceof TriggeredMechanic) {
                 clone.getTrigger().register(this, game);
-                if (clone.getTrigger().getId() === 'Play') {
+                if (
+                    clone.getTrigger().getId() === 'Play'
+                ) {
                     clone.onTrigger(host, game);
                 }
             }

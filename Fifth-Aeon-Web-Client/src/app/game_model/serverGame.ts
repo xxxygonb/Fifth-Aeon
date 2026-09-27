@@ -22,6 +22,12 @@ import {
     DistributeDamageAction
 } from './events/gameAction';
 
+export interface GameReplayInfo {
+    seed: string | number;
+    actions: GameAction[];
+    deckLists: [DeckList, DeckList];
+}
+
 export class ServerGame extends Game {
     private static seed: string | number = 0;
     // Per-instance RNG: concurrent games must never share a random stream,
@@ -99,6 +105,18 @@ export class ServerGame extends Game {
         } else {
             return 1;
         }
+    }
+
+    /**
+     * 确定性重放信息(A4):种子 + 动作日志 + 卡组。
+     * ReplayDuplicator 据此重建一个状态一致的克隆对局供 AI 推演。
+     */
+    public getReplayInfo(): GameReplayInfo {
+        return {
+            seed: this.seed,
+            actions: [...this.actionLog],
+            deckLists: [this.deckLists[0], this.deckLists[1]]
+        };
     }
 
     public shuffle<T>(items: T[]): T[] {

@@ -1,5 +1,5 @@
 # 扫描所有 Angular 模板中的静态英文文本（未被 | tr 翻译的）
-$dir = "g:\Fifth-Aeon\Fifth-Aeon-Web-Client\src\app"
+$dir = Join-Path $PSScriptRoot "Fifth-Aeon-Web-Client\src\app"
 $files = Get-ChildItem $dir -Recurse -Filter *.html | Where-Object { $_.FullName -notmatch 'game_model' }
 foreach ($f in $files) {
     $lines = Get-Content $f.FullName

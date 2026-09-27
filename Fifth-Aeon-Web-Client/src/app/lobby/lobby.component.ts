@@ -1,10 +1,8 @@
 import { Component, HostListener, OnInit } from '@angular/core';
-import { DecksService } from 'app/decks.service';
 import { ClientState, WebClient } from '../client';
 import { SoundManager } from '../sound';
 import { AuthenticationService, UserData } from '../user/authentication.service';
 import { P2PDialogComponent } from './p2p-dialog/p2p-dialog.component';
-import { environment } from '../../environments/environment';
 
 @Component({
     selector: 'ccg-lobby',
@@ -15,7 +13,6 @@ export class LobbyComponent implements OnInit {
     public user: UserData;
     constructor(
         public client: WebClient,
-        public decks: DecksService,
         public soundManager: SoundManager,
         public auth: AuthenticationService
     ) {
@@ -51,10 +48,6 @@ export class LobbyComponent implements OnInit {
         }
     }
 
-    public join() {
-        this.client.joinPublicQueue();
-    }
-
     public openP2PDialog(autoJoinRoom?: string) {
         this.client.gameManager.dialog.open(P2PDialogComponent, {
             width: '600px',
@@ -63,32 +56,6 @@ export class LobbyComponent implements OnInit {
         });
     }
 
-    public fullscreen() {
-        const fsRequester: any = document.documentElement;
-        if (fsRequester.mozRequestFullScreen) {
-            fsRequester.mozRequestFullScreen();
-        } else if (fsRequester.webkitRequestFullScreen) {
-            fsRequester.webkitRequestFullScreen();
-        } else if (fsRequester.requestFullscreen) {
-            fsRequester.requestFullscreen();
-        }
-    }
-
-    public showMultiplayer() {
-        // This method returning false hides the entire multiplayer card in the template if not connected.
-        // We want to show the card if we are connected OR if we want to play P2P.
-        // But the template uses showMultiplayer() to gate the whole block.
-        // Let's change the template logic instead.
-        return this.client.isConnected();
-    }
-
-    public isConnected() {
-        return this.client.isConnected();
-    }
-
-    public inLobby() {
-        return this.client.getState() === ClientState.InLobby;
-    }
     // 排队等待已拆分为独立的 /queue 页(QueueComponent);
     // 登录/对局恢复由路由守卫(InPlayGuard/LoggedInGuard)统一处理,
     // 大厅不再承载恢复中间态视图。
@@ -103,15 +70,4 @@ export class LobbyComponent implements OnInit {
     }
 
     ngOnInit() { }
-
-    public getState() {
-        if (!this.client) {
-            return 0;
-        }
-        return this.client.getState();
-    }
-
-    public isServerless() {
-        return environment.serverless;
-    }
 }

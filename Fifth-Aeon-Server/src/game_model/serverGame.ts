@@ -29,6 +29,13 @@ export interface GameReplay {
     winner: number;
 }
 
+/** 与 Model 端 GameReplayInfo 同形(A4 AI 推演克隆器使用) */
+export interface GameReplayInfo {
+    seed: string | number;
+    actions: GameAction[];
+    deckLists: [DeckList, DeckList];
+}
+
 export class ServerGame extends Game {
     private static seed: string | number = 0;
     // Per-instance RNG: concurrent games must never share a random stream,
@@ -102,6 +109,15 @@ export class ServerGame extends Game {
                 SavedDeck
             ],
             winner: this.getWinner()
+        };
+    }
+
+    /** 与 Model 端一致(A4):AI 推演克隆器的重放信息 */
+    public getReplayInfo(): GameReplayInfo {
+        return {
+            seed: this.seed,
+            actions: [...this.actionLog],
+            deckLists: [this.deckLists[0], this.deckLists[1]]
         };
     }
 
@@ -465,7 +481,11 @@ export class ServerGame extends Game {
         if (
             this.isPlayerTurn(act.player) ||
             this.phase !== GamePhase.Block ||
-            !blocker
+            !blocker ||
+            // Blocker must belong to the acting (defending) player.
+            !this.board
+                .getPlayerUnits(act.player)
+                .some(unit => unit.getId() === blocker.getId())
         ) {
             return false;
         }
@@ -526,5 +546,40 @@ export class ServerGame extends Game {
         }
         this.nextPhase();
         return true;
+    }
+
+    /**
+     * 超时自动行动(A5/C7):为当前应当行动的玩家代打一步"中性"动作,
+     * 用于回合计时器到点后推进对局(挂机/断线保护)。
+     * 优先级:待应答的选择(取最少合法数量) > 主动权持有者过牌。
+     * 返回产生的事件;无可做动作返回 null。
+     */
+    public autoAct(): GameSyncEvent[] | null {
+        // 1) 任意玩家存在待应答的选择 → 按最小数量应答
+        for (const p of [0, 1]) {
+            const choice = this.currentChoices[p];
+            if (choice) {
+                const valid = Array.from(choice.validCards).map(card =>
+                    card.getId()
+                );
+                const picked = valid.slice(0, Math.max(0, choice.min));
+                return this.handleAction({
+                    player: p,
+                    type: GameActionType.CardChoice,
+                    choice: picked
+                } as GameAction);
+            }
+        }
+        // 2) 主动权持有者过牌(Play1 跳过进攻/Block 视为不阻挡/
+        //    DamageDistribution 使用默认分配顺序)
+        return this.handleAction({
+            player: this.getActivePlayer(),
+            type: GameActionType.Pass
+        } as GameAction);
+    }
+
+    /** 该座位使用的卡组(服务端 AI 托管构建镜像时需要) */
+    public getDeckList(playerNo: number): DeckList {
+        return this.deckLists[playerNo];
     }
 }

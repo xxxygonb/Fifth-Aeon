@@ -192,6 +192,8 @@
                 mat-raised-button
                 color="primary"
                 class="pass-button"
+                [matTooltip]="passDisabled() && canPlayResource() ? ('Play a resource first: click an icon at the left or press G/S/D/R.' | tr) : ''"
+                matTooltipPosition="above"
                 (click)="pass()"
             >
                 {{ getPassText() }}
@@ -202,12 +204,14 @@
         </div>
 
         <!-- Player Hand -->
-        <div class="area hand">
+        <div class="area hand" role="list" [attr.aria-label]="'Your hand' | tr">
             <ccg-card
                 scale="1.5"
                 *ngFor="let card of player.getHand(); let i = index"
                 [@inHand]="isInHand(card)"
                 overlap="true"
+                role="listitem button"
+                [attr.aria-label]="card.getName()"
                 [card]="card"
                 [game]="game"
                 [selected]="card === selected"

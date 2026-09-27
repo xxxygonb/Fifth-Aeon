@@ -2,6 +2,7 @@ import { random, sample } from 'lodash';
 import { Card } from './card-types/card';
 import { cardList } from './cards/cardList';
 import { DeckList } from './deckList';
+import { CardSampler, UniformCardSampler } from './cardSampler';
 
 export interface SavedCollection {
     gold: number;
@@ -207,16 +208,14 @@ export class Collection {
 }
 
 export class Booster {
-    constructor(private cardCount: number = 6) {}
+    constructor(
+        private cardCount: number = 6,
+        private sampler: CardSampler = new UniformCardSampler()
+    ) {}
 
     public open() {
-        const openedCards = Array<string>(this.cardCount);
-        const cardIds = cardList.getIds();
-
-        for (let i = 0; i < this.cardCount; i++) {
-            const drawn = sample(cardIds) || '';
-            openedCards[i] = drawn;
-        }
-        return openedCards;
+        // 经 CardSampler 抽样(B5): 默认均匀、包内不重复;
+        // 稀有度/保底等规则未来通过注入不同 Sampler 实现。
+        return this.sampler.sampleCards(this.cardCount).map(card => card.getId());
     }
 }

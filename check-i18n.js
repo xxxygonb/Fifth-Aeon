@@ -7,8 +7,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const MODEL = 'g:/Fifth-Aeon/Fifth-Aeon-Model';
-const CLIENT = 'g:/Fifth-Aeon/Fifth-Aeon-Web-Client';
+const ROOT = path.resolve(__dirname);
+const MODEL = path.join(ROOT, 'Fifth-Aeon-Model');
+const CLIENT = path.join(ROOT, 'Fifth-Aeon-Web-Client');
 
 function walk(dir, ext, out = []) {
     for (const f of fs.readdirSync(dir)) {

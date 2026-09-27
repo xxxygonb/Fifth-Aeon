@@ -148,6 +148,11 @@ class AIManager {
         }
     }
 
+    /** 当前生效的具体难度(服务端 AI 对战请求携带用;Dynamic 解析为自适应档) */
+    public getConcreteDifficulty(): ConcreteDifficulty {
+        return this.getCurrentDifficulty();
+    }
+
     public getLeveledDeck(): DeckList {
         switch (this.getCurrentDifficulty()) {
             case DifficultyLevel.Easy:

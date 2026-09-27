@@ -467,6 +467,15 @@ export class ClientGame extends Game {
     }
 
     /**
+     * 事件流对齐:将期望事件号设为指定值后开始同步。
+     * 用于服务端 AI 托管等中途加入的场景——镜像从事件日志的
+     * 某个绝对编号开始补放(该编号可能非 0,如日志被裁剪过)。
+     */
+    public primeEventStream(firstEventNumber: number) {
+        this.nextExpectedEvent = firstEventNumber;
+    }
+
+    /**
      * Syncs an event that happened on the server into the state of this game model
      */
     public syncServerEvent(localPlayerNumber: number, event: GameSyncEvent) {

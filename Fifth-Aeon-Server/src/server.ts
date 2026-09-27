@@ -4,11 +4,15 @@ import * as express from "express";
 import { NextFunction } from "express-serve-static-core";
 import * as morgan from "morgan";
 import * as os from "os";
+import { sample } from "lodash";
 import { authRoutes } from "./routes/authentication.routes";
 import { availabilityRoutes } from "./routes/availability.routes";
 import { cardRoutes } from "./routes/collection.routes";
 import { draftRouter } from "./routes/draft.routes";
 import { Account } from "./account";
+import { aiManager } from "./game_model/aiManager";
+import { ConcreteDifficulty } from "./game_model/aiManager";
+import { DifficultyLevel, decksByLevel } from "./game_model/scenarios/decks";
 import { startDB } from "./db";
 import { ErrorHandler, ErrorType } from "./errors";
 import { tsrv } from "./i18n-messages";
@@ -75,9 +79,11 @@ export class Server {
             }
         };
 
-        // Give a disconnected player 60s to reconnect before ending the
-        // game they were in, so a dropped connection cannot stall it forever.
+        // Give a disconnected player 60s to reconnect before an AI takes
+        // over their seat (A5/C7 托管);若玩家长时间不回归,对局超时后结束。
         const disconnectTimeout = 1000 * 60;
+        // 托管后人类玩家长时间不回归的兜底(防 AI 对 AI 无限拖延)
+        const takeoverGiveUpTime = 1000 * 60 * 15;
         this.messenger.onDisconnect = (token: string) => {
             this.gameQueue.removePrivateGamesFor(token);
             // 断线时同时移出公共匹配队列，避免幽灵玩家留在队列中
@@ -99,10 +105,31 @@ export class Server {
                 const game = this.games.get(gameId);
                 if (game) {
                     console.log(
-                        "Player disconnected from game, ending it:",
+                        "Player disconnected from game, AI taking over:",
                         game.getName()
                     );
-                    game.end();
+                    game.disconnectTakeover(
+                        token,
+                        aiManager.getLeveledAIFor(DifficultyLevel.Medium)
+                    );
+                    // 托管兜底:再等一段时间仍不回归则结束对局
+                    setTimeout(() => {
+                        const still = this.accounts.get(token);
+                        if (
+                            still &&
+                            still.gameId === gameId &&
+                            !this.messenger.isConnected(token)
+                        ) {
+                            const g = this.games.get(gameId);
+                            if (g) {
+                                console.log(
+                                    "Disconnected player never returned, ending game:",
+                                    g.getName()
+                                );
+                                g.end();
+                            }
+                        }
+                    }, takeoverGiveUpTime);
                 }
             }, disconnectTimeout);
         };
@@ -118,6 +145,11 @@ export class Server {
             if (game) {
                 game.resendState(msg.source, (msg.data && msg.data.from) || 0);
             }
+        });
+
+        // 与服务器 AI 对战(A3):为请求者配一个 AI 坐席并立即开局
+        this.messenger.addHandler(MessageType.PlayWithAI, (msg: Message) => {
+            this.startAIGame(msg);
         });
 
         this.passMessagesToGames();
@@ -284,6 +316,86 @@ export class Server {
         const server = new GameServer(this.messenger, this, id, ac1, ac2);
         this.games.set(id, server);
         server.start();
+    }
+
+    /** 归一化难度:Dynamic/非法值回退 Medium */
+    private normalizeDifficulty(raw: any): ConcreteDifficulty {
+        const n = Number(raw);
+        switch (n) {
+            case DifficultyLevel.Easy:
+                return DifficultyLevel.Easy;
+            case DifficultyLevel.Hard:
+                return DifficultyLevel.Hard;
+            case DifficultyLevel.Expert:
+                return DifficultyLevel.Expert;
+            default:
+                return DifficultyLevel.Medium;
+        }
+    }
+
+    /**
+     * 服务器 AI 对战(A3):人类玩家(已 SetDeck) vs AI 坐席。
+     * AI 座位 = 1,人类 = 0;AI 卡组按难度从 scenarios/decks 抽取。
+     */
+    private startAIGame(msg: Message) {
+        const acc = this.accounts.get(msg.source);
+        if (!acc) {
+            this.errors.clientError(
+                msg.source,
+                ErrorType.AuthError,
+                tsrv("You must be logged in to play against the server AI.")
+            );
+            return;
+        }
+        if (acc.gameId) {
+            this.errors.clientError(
+                msg.source,
+                ErrorType.GameActionError,
+                tsrv("You are already in a game.")
+            );
+            return;
+        }
+        if (!acc.deck || acc.deck.size() === 0 || !acc.deck.isValid()) {
+            this.errors.clientError(
+                msg.source,
+                ErrorType.DeckError,
+                tsrv("Set a deck before starting a game.")
+            );
+            return;
+        }
+        const difficulty = this.normalizeDifficulty(msg.data?.difficulty);
+        const ctor = aiManager.getLeveledAIFor(difficulty);
+        let aiDeck: DeckList | undefined;
+        switch (difficulty) {
+            case DifficultyLevel.Easy:
+                aiDeck = sample(decksByLevel.easy);
+                break;
+            case DifficultyLevel.Hard:
+                aiDeck = sample(decksByLevel.hard);
+                break;
+            case DifficultyLevel.Expert:
+                aiDeck = sample(decksByLevel.expert);
+                break;
+            default:
+                aiDeck = sample(decksByLevel.medium);
+                break;
+        }
+        if (!aiDeck) {
+            this.errors.clientError(
+                msg.source,
+                ErrorType.GameActionError,
+                tsrv("No AI deck available.")
+            );
+            return;
+        }
+        const id = getToken();
+        acc.setInGame(id);
+        const game = new GameServer(this.messenger, this, id, acc, new Account(getToken(), "Server AI"), [
+            { seat: 1, ctor, deck: aiDeck.clone() }
+        ]);
+        this.games.set(id, game);
+        game.start();
+        console.log("Server AI game started:", game.getName(), "difficulty", DifficultyLevel[difficulty]);
     }
 
     public endGame(gameId: string) {

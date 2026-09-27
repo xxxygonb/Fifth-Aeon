@@ -9,15 +9,20 @@
                 noTranslate="true"
             ></ccg-card>
             <p class="record" *ngIf="draft && draft.canPlayGame()">
-                你已取得 {{ draft.getWins() }} 胜
-                {{ draft.getLosses() }} 负。
+                {{
+                    'Draft record: {w} wins, {l} losses.'
+                        | tr : { w: draft.getWins(), l: draft.getLosses() }
+                }}
             </p>
             <div *ngIf="!draft">
                 <p class="record">
-                    花费 200 金币即可开启一局限制赛。
+                    {{ 'A draft costs 200 gold to enter.' | tr }}
                 </p>
                 <p [hidden]="canBuy()">
-                    但你目前的金币不足，可以通过进行普通对局来赚取金币。
+                    {{
+                        'You do not have enough gold. Win games to earn more.'
+                            | tr
+                    }}
                 </p>
                 <button
                     mat-raised-button
@@ -25,7 +30,7 @@
                     [disabled]="!canBuy()"
                     (click)="start()"
                 >
-                    开启限制赛
+                    {{ 'Start Draft' | tr }}
                 </button>
             </div>
         </mat-card-content>
@@ -36,7 +41,7 @@
             <button
                 mat-fab
                 matTooltipPosition="above"
-                matTooltip="开始对局"
+                [matTooltip]="'Play Draft Game' | tr"
                 color="primary"
                 (click)="draftService.playGame()"
                 [disabled]="!draft || !draft.canPlayGame()"
@@ -46,7 +51,7 @@
             <button
                 mat-fab
                 matTooltipPosition="above"
-                matTooltip="返回大厅"
+                [matTooltip]="'Back to Lobby' | tr"
                 color="accent"
                 routerLink="/lobby"
             >
@@ -55,7 +60,7 @@
             <button
                 mat-fab
                 matTooltipPosition="above"
-                matTooltip="放弃本次限制赛"
+                [matTooltip]="'Retire from Draft' | tr"
                 color="warn"
                 [disabled]="!draft || retired"
                 (click)="retire()"
@@ -70,8 +75,11 @@
     <mat-card-header>
         <mat-card-title>
             <h1>
-                限制赛卡组 - {{ deck.size() }} /
-                {{ format.minDeckSize }}
+                {{
+                    'Draft Deck - {n} / {m}'
+                        | tr
+                        : { n: deck.size(), m: format.minDeckSize }
+                }}
             </h1>
         </mat-card-title>
     </mat-card-header>

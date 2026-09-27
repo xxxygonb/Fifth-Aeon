@@ -267,6 +267,73 @@ describe('ServerGame 动作验证回归', () => {
             JSON.stringify(b.getReplay().actions)
         );
     });
+
+    it('阻挡宣告必须属于防守方自己,不能用对方单位阻挡(C2)', () => {
+        const game = startWithMulligans();
+        // 用同一张卡给双方各生成一个单位(同类型,保证可互相阻挡)。
+        // 注意:getCards() 返回的是注册原型,直接复用会让三个引用
+        // 指向同一实例;必须经 getCard(dataId) 工厂各取一个新实例。
+        const unitCard = cardList
+            .getCards()
+            .find(c => c.getCardType() === CardType.Unit)!;
+        const attacker = game.playGeneratedUnit(
+            0,
+            cardList.getCard(unitCard.getDataId())
+        );
+        const defenderUnit = game.playGeneratedUnit(
+            1,
+            cardList.getCard(unitCard.getDataId())
+        );
+        const attacker2 = game.playGeneratedUnit(
+            0,
+            cardList.getCard(unitCard.getDataId())
+        );
+        // 召唤失调:新单位本回合不能攻/挡,refresh 模拟下回合状态
+        attacker.refresh();
+        defenderUnit.refresh();
+        attacker2.refresh();
+
+        // 玩家 0 宣攻后进入阻挡阶段
+        expect(
+            game.handleAction({
+                type: GameActionType.ToggleAttack,
+                player: 0,
+                unitId: attacker.getId()
+            }),
+            '宣攻应被接受'
+        ).to.not.equal(null);
+        expect(
+            game.handleAction({ type: GameActionType.Pass, player: 0 }),
+            '进攻方过牌进入阻挡阶段'
+        ).to.not.equal(null);
+        expect(game.getPhase()).to.equal(GamePhase.Block);
+
+        // 攻击方(玩家 0)的回合已结束:玩家 1 是防守方
+        // 用【玩家 0 的另一个单位】宣告阻挡 → 必须被拒绝
+        expect(
+            game.handleAction({
+                type: GameActionType.DeclareBlocker,
+                player: 1,
+                blockerId: attacker2.getId(),
+                blockedId: attacker.getId()
+            }),
+            '使用对方单位阻挡必须被拒绝'
+        ).to.equal(null);
+        // 阻挡状态未被污染(阻挡关系记录在阻挡者身上)
+        expect(attacker2.getBlockedUnitId()).to.equal(null);
+
+        // 用自己的单位阻挡 → 接受
+        expect(
+            game.handleAction({
+                type: GameActionType.DeclareBlocker,
+                player: 1,
+                blockerId: defenderUnit.getId(),
+                blockedId: attacker.getId()
+            }),
+            '用自己的单位阻挡应被接受'
+        ).to.not.equal(null);
+        expect(defenderUnit.getBlockedUnitId()).to.equal(attacker.getId());
+    });
 });
 
 describe('DeckList 卡组构建规则', () => {

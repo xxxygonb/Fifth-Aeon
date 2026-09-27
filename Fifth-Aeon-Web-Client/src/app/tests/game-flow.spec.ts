@@ -1,12 +1,12 @@
-import { ServerGame } from './serverGame';
-import { ClientGame } from './clientGame';
-import { GameActionType } from './events/gameAction';
-import { standardFormat } from './gameFormat';
-import { DeckList } from './deckList';
-import { deckMap } from './scenarios/decks';
-import { GamePhase } from './game';
-import { Animator } from './animator';
-import { cardList } from './cards/cardList';
+import { ServerGame } from '../game_model/serverGame';
+import { ClientGame } from '../game_model/clientGame';
+import { GameActionType } from '../game_model/events/gameAction';
+import { standardFormat } from '../game_model/gameFormat';
+import { DeckList } from '../game_model/deckList';
+import { deckMap } from '../game_model/scenarios/decks';
+import { GamePhase } from '../game_model/game';
+import { Animator } from '../game_model/animator';
+import { cardList } from '../game_model/cards/cardList';
 
 /**
  * 核心规则引擎回归测试:

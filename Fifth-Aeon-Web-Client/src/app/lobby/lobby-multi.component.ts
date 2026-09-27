@@ -11,7 +11,8 @@ import { environment } from '../../environments/environment';
 export class LobbyMultiComponent {
     constructor(public client: WebClient) {}
 
-    public isServerless() {
-        return environment.serverless;
+    /** 离线模式下公共匹配不可用(需登录态) */
+    public queueDisabled() {
+        return !this.client.isConnected() || this.client.isOffline();
     }
 }

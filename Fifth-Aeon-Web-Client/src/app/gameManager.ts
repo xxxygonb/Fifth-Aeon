@@ -1,11 +1,10 @@
-import { Injectable, NgZone } from '@angular/core';
+﻿import { Injectable, NgZone } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { SpeedService } from 'app/speed.service';
 import { every, sample } from 'lodash';
 import { CardChooserComponent } from './game/card-chooser/card-chooser.component';
 import { DamageDistributionDialogComponent } from './game/damage-distribution-dialog/damage-distribution-dialog.component';
 import { OverlayService } from './game/overlay.service';
-import { AI } from './game_model/ai/ai';
 import { AIConstructor } from './game_model/ai/aiList';
 import { DefaultAI } from './game_model/ai/defaultAi';
 import { ClientGame } from './game_model/clientGame';
@@ -25,6 +24,8 @@ import { SoundManager } from './sound';
 import { TipService } from './tips';
 import { aiManager } from './game_model/aiManager';
 import { GameType } from './gameType';
+import { AiGameService } from './ai-game.service';
+import { log } from './logger';
 
 @Injectable()
 export class GameManager {
@@ -37,9 +38,6 @@ export class GameManager {
     private game1: ClientGame | null = null;
     private game2: ClientGame | null = null;
     private gameModel: ServerGame | null = null;
-
-    private ais: Array<AI> = [];
-    private aisByPlayerNumber: Array<AI | null> = [];
 
     private log: Log | null = null;
     private onGameEnd: ((won: boolean, quit: boolean) => any) | null = null;
@@ -58,6 +56,7 @@ export class GameManager {
         public dialog: MatDialog,
         private overlay: OverlayService,
         private speed: SpeedService,
+        private aiGame: AiGameService,
         messengerService: MessengerService
     ) {
         this.startAiWithSpeed(1000);
@@ -117,27 +116,16 @@ export class GameManager {
             }
         });
 
-        this.setupAiManager();
+        this.aiGame.setupPersistence();
 
         this.reset();
     }
 
-    private setupAiManager() {
-        const localStorageKey = 'ai-data';
-        aiManager.save = data => localStorage.setItem(localStorageKey, JSON.stringify(data));
-
-        const json = localStorage.getItem(localStorageKey);
-        if (json) {
-            aiManager.load(JSON.parse(json));
-        }
-    }
-
     public reset() {
-        this.stopAI();
+        this.aiGame.reset();
         this.game1 = null;
         this.game2 = null;
         this.gameModel = null;
-        this.ais = [];
         this.replaying = false;
     }
 
@@ -153,7 +141,7 @@ export class GameManager {
             return;
         }
         this.replaying = false;
-        console.log('[recovery] replay finished');
+        log.debug('recovery: replay finished');
         const game = this.game1;
         if (!game) {
             return;
@@ -192,7 +180,7 @@ export class GameManager {
         if (!pending) {
             return;
         }
-        console.log('[recovery] reopening pending choice');
+        log.debug('recovery: reopening pending choice');
         const config = new MatDialogConfig();
         config.disableClose = true;
         config.maxWidth = '95vw';
@@ -210,16 +198,8 @@ export class GameManager {
         return this.replaying;
     }
 
-    private stopAI() {
-        for (const ai of this.ais) {
-            ai.stopActing();
-        }
-    }
-
     public startAiWithSpeed(ms: number) {
-        for (const ai of this.ais) {
-            ai.startActingDelayMode(ms, this.overlay.getAnimator());
-        }
+        this.aiGame.startWithSpeed(ms, this.overlay.getAnimator());
     }
 
     // Game Actions -------------------------------------------------------------------------
@@ -265,31 +245,11 @@ export class GameManager {
                 this.messenger.sendMessageToServer(MessageType.GameEvents, events);
             }
 
+            this.aiGame.feedEvents(events);
             for (const event of events) {
-                for (const ai of this.ais) {
-                    ai.handleGameEvent(event);
-                }
                 this.handleGameEvent(event);
             }
         }, 10);
-    }
-
-    private checkPriorityChange(event: GameSyncEvent) {
-        if (!this.gameModel || !this.gameModel.canTakeAction()) {
-            return;
-        }
-        if (
-            event.type === SyncEventType.TurnStart ||
-            event.type === SyncEventType.PhaseChange ||
-            event.type === SyncEventType.ChoiceMade
-        ) {
-            const aiToSend = this.aisByPlayerNumber[
-                this.gameModel.getActivePlayer()
-            ];
-            if (aiToSend) {
-                aiToSend.onGainPriority();
-            }
-        }
     }
 
     private sendGameAction(action: GameAction, isAi: boolean = false) {
@@ -307,7 +267,7 @@ export class GameManager {
         }
 
         if (!this.gameModel) {
-            console.warn('Sent action to empty game model');
+            log.warn('Sent action to empty game model');
             return;
         }
 
@@ -423,15 +383,15 @@ export class GameManager {
 
         // The game is being controlled by the player, so display tips and update the game state
         // (otherwise the A.I will manage this so we needn't bother)
-        if (this.ais.length < 2) {
+        if (this.aiGame.count() < 2) {
             this.zone.run(() =>
                 playerGame.syncServerEvent(this.playerNumber, event)
             );
             this.tips.handleGameEvent(playerGame, this.playerNumber, event);
         }
 
-        if (this.ais.length > 0) {
-            this.checkPriorityChange(event);
+        if (this.aiGame.count() > 0) {
+            this.aiGame.notifyPriority(event, this.gameModel);
         }
 
         this.soundManager.handleGameEvent(event);
@@ -510,7 +470,7 @@ export class GameManager {
     }
 
     public isInputEnabled() {
-        return this.ais.length < 2;
+        return this.aiGame.count() < 2;
     }
 
     // Game Life cycle ------------------------------------------------
@@ -518,12 +478,12 @@ export class GameManager {
     /** Invoked when the game ends (because a player won) */
     private endGame(winner: number, quit: boolean) {
         const playerWon = winner === this.playerNumber;
-        this.stopAI();
+        this.aiGame.stop();
         this.overlay
             .getAnimator()
             .awaitAnimationEnd()
             .then(() => {
-                aiManager.recordGameResult(playerWon);
+                this.aiGame.recordResult(playerWon);
                 if (this.onGameEnd) {
                     this.onGameEnd(playerWon, quit);
                 } else {
@@ -571,7 +531,7 @@ export class GameManager {
         this.markGameMode('multiplayer');
         this.replaying = replay;
         this.soundManager.setFactionContext(this.deck.getColors());
-        this.ais = [];
+        this.aiGame.reset();
         this.gameModel = null;
         this.playerNumber = playerNumber;
         this.opponentNumber = 1 - this.playerNumber;
@@ -593,37 +553,6 @@ export class GameManager {
         this.soundManager.playImportantSound('gong');
         this.zone.run(() => {
             this.opponentUsername = opponentName;
-        });
-    }
-
-    public async startAiServerGame() {
-        this.gameType = GameType.ServerAIGame;
-        this.markGameMode('local');
-        this.playerNumber = Math.random() > 0.5 ? 1 : 0;
-        this.opponentNumber = 1 - this.playerNumber;
-        this.localMessenger.sendMessageToServer(MessageType.StartGame, {
-            playerNumber: this.opponentNumber,
-            deck: this.deck.getSavable()
-        });
-
-        this.soundManager.setFactionContext(this.deck.getColors());
-        this.ais = [];
-        this.gameModel = null;
-
-        this.log = new Log(this.playerNumber);
-
-        this.game1 = new ClientGame(
-            'player',
-            (_, action) => this.sendGameAction(action, false),
-            this.overlay.getAnimator(),
-            this.log
-        );
-        this.game1.setOwningPlayer(this.playerNumber);
-        this.game1.enableAnimations();
-
-        this.soundManager.playImportantSound('gong');
-        this.zone.run(() => {
-            this.opponentUsername = 'Server A.I';
         });
     }
 
@@ -699,9 +628,14 @@ export class GameManager {
         );
         this.game2.setOwningPlayer(this.opponentNumber);
 
-        const newAI = new aiCtor(this.opponentNumber, this.game2, aiDeck);
-        this.ais.push(newAI);
-        this.aisByPlayerNumber = [null, newAI];
+        // AI 实例/事件喂养/克隆器注入 → AiGameService(B2)
+        this.aiGame.assembleAI({
+            aiCtor,
+            aiDeck,
+            opponentNumber: this.opponentNumber,
+            mirror: this.game2,
+            authoritative: this.gameModel
+        });
     }
 
     private applyScenario(scenario: Scenario, games: Array<Game>) {
@@ -712,7 +646,7 @@ export class GameManager {
 
     private handleP2PConnect(msg: any) {
         // When we receive a Connect message in P2P, it means the other peer is ready.
-        console.log('P2P Connect received', msg);
+        log.debug('P2P Connect received', msg);
     }
 
     public startP2PBackendGame(isHost: boolean) {
@@ -730,14 +664,14 @@ export class GameManager {
     private handleSetDeck(msg: any) {
         if (this.gameType === GameType.P2PHost) {
             // Host receives deck from Joiner
-            console.log('Host received opponent deck', msg);
+            log.debug('Host received opponent deck', msg);
             this.opponentDeck = new DeckList();
             this.opponentDeck.fromJson(msg.data.deckList);
 
             this.checkP2PStart();
         } else if (this.gameType === GameType.P2PJoin) {
             // Joiner receives deck from Host
-            console.log('Joiner received opponent deck', msg);
+            log.debug('Joiner received opponent deck', msg);
             this.opponentDeck = new DeckList();
             this.opponentDeck.fromJson(msg.data.deckList);
         }
@@ -752,7 +686,7 @@ export class GameManager {
     public onP2PGameStarted: () => void = () => { };
 
     private startP2PGameSession() {
-        console.log('Starting P2P Game Session as Host');
+        log.debug('Starting P2P Game Session as Host');
         // Initialize ServerGame
         ServerGame.setSeed(new Date().getTime());
         // Host is 0, Joiner is 1
@@ -761,7 +695,7 @@ export class GameManager {
             this.opponentDeck!
         ]);
 
-        this.ais = [];
+        this.aiGame.reset();
         this.log = new Log(this.playerNumber);
 
         // Host Game (Client Side)

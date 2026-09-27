@@ -77,23 +77,29 @@ PostgreSQL 16
 
 | 模式 | 依赖服务器 | 说明 |
 |------|-----------|------|
-| 单人 vs AI | 否 | `ServerGame` 直接跑在浏览器内 |
+| 单人 vs AI | 否 | `ServerGame` 直接跑在浏览器内；Expert 难度带引擎级攻击推演(A4) |
+| 服务器 AI | 是 | `PlayWithAI` 消息：服务端为玩家配 AI 坐席，走与联机一致的校验/重放管线(A3) |
 | P2P 对战 | 仅信令 | simple-peer DataChannel，Firebase 信令或手动复制码 |
 | 联机对战 | 是 | 匹配队列 / 私密房邀请，服务器权威仲裁 |
 
+**对局保护(A5/C7)**：任何一方(含待应答选择)超过时限未行动，服务端自动代打一步中性动作推进
+(默认 75s，环境变量 `FA_TURN_TIMEOUT_MS` 可调)；玩家断线 60 秒后由服务端 AI 托管其座位，
+重连即自动交还；托管后 15 分钟仍未回归则结束对局。
+
 ## 三仓库关系
 
-- **Fifth-Aeon-Model** 是规则核心，被 Server 与 Client 通过 **git submodule** 引用：
-  - Server：`src/game_model`（旧版本 7c40138，含 4 个文件的差异：animator.ts / card-types/item.ts / resource.ts / serverGame.ts）
-  - Client：`src/app/game_model`（5759634，与独立 Model 目录一致）
-- **修改 Model 时必须同步三处副本**（本工程已完成一次全量同步；差异文件除外）。可用以下命令同步（示例：同步 i18n 目录）：
+- **Fifth-Aeon-Model** 是规则核心的**唯一权威源**（非 git submodule，同一仓库内的三个目录）：
+  - Server：`src/game_model`（**生成的副本**，构建/启动时自动刷新；唯一例外 `serverGame.ts` 为服务端回放扩展，见 model-sync.js 白名单）
+  - Client：`src/app/game_model`（**生成的副本**，同上）
+- **修改规则引擎只需改 Model，然后运行同步脚本**（两个副本自动刷新）：
 
   ```powershell
-  Copy-Item Fifth-Aeon-Model\i18n\* Fifth-Aeon-Web-Client\src\app\game_model\i18n\ -Force
-  Copy-Item Fifth-Aeon-Model\i18n\* Fifth-Aeon-Server\src\game_model\i18n\ -Force
+  node model-sync.js           # 同步 Model → 两副本
+  node model-sync.js --check   # 只校验(漂移时退出码 1, 供 CI 使用)
   ```
 
-- 两份子模块的 4 个差异文件**不要互相覆盖**（Server 版含本地修复）。
+  一键启动脚本(start.ps1/start.sh)会在编译前自动执行同步并**阻断**失败。
+- 副本目录禁止手工编辑（会被下次同步覆盖）；如需副本特有逻辑，在 model-sync.js 的 OVERRIDE_WHITELIST 显式登记。
 
 ## 启动方法
 
@@ -158,9 +164,9 @@ npx ng serve              # http://localhost:4200
 | 服务器监听改动 | `npx gulp watch`（自动重编译） |
 | 客户端开发服务 | `cd Fifth-Aeon-Web-Client && npx ng serve`（热重载） |
 | 客户端生产构建 | `npx ng build` |
-| 全卡文案验证 | `cd g:\Fifth-Aeon && node scan-all-cards.js`（期望残留 0） |
-| i18n 覆盖检查 | `cd g:\Fifth-Aeon && node check-i18n.js`（期望双 0 缺失） |
-| 三副本同步检查 | `cd g:\Fifth-Aeon && node check-model-sync.js`（期望 OK；不一致时退出码 1） |
+| 全卡文案验证 | `node scan-all-cards.js`（期望残留 0） |
+| i18n 覆盖检查 | `node check-i18n.js`（期望双 0 缺失） |
+| 三副本同步 | `node model-sync.js`（同步）/ `node model-sync.js --check`（校验,漂移退出码 1） |
 
 > 旧版 `npm test`（mocha + ts-node）因依赖缺失且无测试文件已移除。
 
@@ -198,8 +204,8 @@ game_model/i18n/                       src/app/i18n/                Server/src/i
 
 ### 如何新增/修正翻译
 
-1. 卡牌名 → `game_model/i18n/zh-CN-cards.ts`（三副本同步）
-2. 卡牌描述/关键词 → `game_model/i18n/zh-CN.ts` 的 Mechanic 区块（三副本同步）
+1. 卡牌名 → `Fifth-Aeon-Model/i18n/zh-CN-cards.ts`（改后运行 `node model-sync.js`）
+2. 卡牌描述/关键词 → `Fifth-Aeon-Model/i18n/zh-CN.ts` 的 Mechanic 区块（改后运行 `node model-sync.js`）
 3. 界面文本 → `src/app/i18n/zh-CN.ts` 或 `zh-CN-2.ts`，代码里对应 `| tr` / `i18n.tr()`
 4. 服务器消息 → `Server/src/i18n-messages.ts`
 

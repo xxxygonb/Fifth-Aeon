@@ -1,6 +1,6 @@
-import { sampleSize } from 'lodash';
 import { Card } from './card-types/card';
 import { cardList } from './cards/cardList';
+import { UniformCardSampler } from './cardSampler';
 import { Rewards } from './collection';
 import { DeckList, SavedDeck } from './deckList';
 import { standardFormat } from './gameFormat';
@@ -90,8 +90,9 @@ export class Draft {
      */
     getChoices(): Set<Card> {
         if (!this.choices || this.choices.size === 0) {
+            // 经 CardSampler 抽样(B5): 默认均匀、每轮选项不重复
             this.choices = new Set(
-                sampleSize(cardList.getCards(), Draft.CardsPerPick)
+                new UniformCardSampler().sampleCards(Draft.CardsPerPick)
             );
         }
         return this.choices;

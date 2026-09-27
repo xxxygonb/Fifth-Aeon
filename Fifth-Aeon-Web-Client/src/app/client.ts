@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+﻿import { Injectable, NgZone } from '@angular/core';
 import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -16,8 +16,10 @@ import { I18nService } from './i18n/i18n.service';
 import { AuthenticationService, UserData } from './user/authentication.service';
 import { SettingsDialogComponent } from './settings/settings-dialog/settings-dialog.component';
 import { GameType } from './gameType';
+import { aiManager } from './game_model/aiManager';
 import { P2PClient } from './p2p/p2p-client';
 import { ISignalingService } from './p2p/signaling/signaling-service';
+import { log } from './logger';
 import { environment } from '../environments/environment';
 
 export enum ClientState {
@@ -45,6 +47,8 @@ export class WebClient {
     private resendRequestedAt = 0;
     private connected = false;
     private connectedToLocalServer = false;
+    /** 离线模式标志:进入离线游玩后置位,登录成功后清除 */
+    private offline = false;
     /** 页面刷新/关闭置位:此时绝不发 Quit,交由服务器 60 秒断线保留 + 重连恢复 */
     private unloading = false;
 
@@ -137,7 +141,7 @@ export class WebClient {
     }
 
     private startGame(msg: Message) {
-        console.log(
+        log.debug(
             '[recovery] StartGame received',
             msg.data.replay ? '(replay)' : '(new game)'
         );
@@ -152,7 +156,7 @@ export class WebClient {
             msg.data.gameId &&
             msg.data.gameId === this.restoredGameId
         ) {
-            console.log('[recovery] duplicate StartGame(replay) ignored');
+            log.debug('[recovery] duplicate StartGame(replay) ignored');
             return;
         }
         this.restoredGameId = replay ? msg.data.gameId || null : null;
@@ -178,13 +182,14 @@ export class WebClient {
         this.router.navigate(['/game']);
     }
 
-    public async startLocalAIGame() {
+    public startLocalAIGame() {
+        // 服务器 AI(A3):请求服务端开一局「人类 vs AI 坐席」。
+        // 此后与公共匹配同路:等待页 → 服务器 StartGame → 进入对局。
         this.router.navigate(['/queue']);
-
-        await this.gameManager.startAiServerGame();
-        this.getGameReward = () => Promise.resolve('No reward in A.I mode');
-        this.changeState(ClientState.InGame);
-        this.router.navigate(['/game']);
+        this.messenger.sendMessageToServer(MessageType.PlayWithAI, {
+            difficulty: aiManager.getConcreteDifficulty()
+        });
+        this.changeState(ClientState.Waiting);
     }
 
     private addHotkeys() {
@@ -235,17 +240,18 @@ export class WebClient {
     public requestGameStateResend(from = 0) {
         const now = Date.now();
         if (now - this.resendRequestedAt < 5000) {
-            console.log('[recovery] resend request throttled');
+            log.debug('[recovery] resend request throttled');
             return;
         }
         this.resendRequestedAt = now;
-        console.log('[recovery] requesting game state resend from', from);
+        log.debug('[recovery] requesting game state resend from', from);
         this.messenger.sendMessageToServer(MessageType.ResendGame, {
             from: from
         });
     }
 
     private onLogin(loginData: UserData) {
+        this.offline = false;
         this.changeState(ClientState.InLobby);
         this.username = loginData.username;
         this.tips.setUsername(this.username);
@@ -257,6 +263,7 @@ export class WebClient {
     }
 
     public enterOfflineMode(): boolean {
+        this.offline = true;
         this.changeState(ClientState.InLobby);
         this.username = environment.serverless ? 'Player' : 'Offline Player';
         this.tips.setUsername(this.username);
@@ -265,6 +272,11 @@ export class WebClient {
         const hasSound = localStorage.getItem('sound-settings');
         const hasTips = localStorage.getItem('tip-store');
         return !hasSound && !hasTips;
+    }
+
+    /** 离线(或 serverless)模式:所有需要登录态的服务器消息都应跳过 */
+    public isOffline(): boolean {
+        return this.offline || environment.serverless;
     }
 
     public startP2PGame(signaling: ISignalingService, isHost: boolean) {
@@ -315,9 +327,11 @@ export class WebClient {
             return;
         }
         this.gameManager.setDeck(deck);
-        this.messenger.sendMessageToServer(MessageType.SetDeck, {
-            deckList: deck.toJson()
-        });
+        if (!this.isOffline()) {
+            this.messenger.sendMessageToServer(MessageType.SetDeck, {
+                deckList: deck.toJson()
+            });
+        }
 
         if (this.onDeckSelected) {
             // Only call onDeckSelected if we haven't already started the game 
@@ -414,7 +428,7 @@ export class WebClient {
             return false;
         };
         if (mode !== 'multiplayer') {
-            console.log('[tryRestore] local game or no game, skip restore');
+            log.debug('[tryRestore] local game or no game, skip restore');
             return Promise.resolve(backToLobby());
         }
         // WS 若尚在重连,ResendGame 会进入离线队列,重连后自动补发

@@ -61,13 +61,12 @@ else
     echo "[OK] Client dependencies present"
 fi
 
-# ---- 5. Model sync check (three game_model copies must stay consistent) ----
-echo "[..] Checking game model sync ..."
-if node "$ROOT/check-model-sync.js"; then
-    echo "[OK] Model sync check passed"
+# ---- 5. Model sync (Model 是唯一权威源, 副本自动刷新; 漂移将阻断启动) ----
+echo "[..] Syncing game model copies from Model ..."
+if node "$ROOT/model-sync.js"; then
+    echo "[OK] Model sync done"
 else
-    echo "[WARN] game_model 三副本存在差异,可能导致联机状态不同步(见上方列表)。"
-    echo "[WARN] 建议将 Web-Client 副本同步到其余两份后重试。"
+    fail "game_model 同步失败(存在副本多出文件, 见上方列表)。请处理后重试。"
 fi
 
 # ---- 6. Compile server (always incremental, avoids stale dist) ----

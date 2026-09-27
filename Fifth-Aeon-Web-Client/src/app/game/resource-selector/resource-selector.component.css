@@ -8,3 +8,18 @@
 .darkened {
     filter: brightness(0.5);
 }
+
+/* C11:可打资源时呼吸式高亮,引导新手点击图标而非右侧禁用按钮 */
+.pulse {
+    animation: resource-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes resource-pulse {
+    0%,
+    100% {
+        filter: brightness(1);
+    }
+    50% {
+        filter: brightness(1.35) drop-shadow(0 0 6px rgba(255, 235, 59, 0.9));
+    }
+}

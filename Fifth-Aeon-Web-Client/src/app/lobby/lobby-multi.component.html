@@ -2,13 +2,13 @@
     <mat-card class="lobby-card">
         <mat-card-title>{{ 'Multiplayer' | tr }}</mat-card-title>
 
-        <ng-template [ngIf]="client.isConnected()">
+        <ng-template [ngIf]="!queueDisabled()">
             <button mat-raised-button color="primary" (click)="client.selectDeckAndStartGame(2)">
                 <mat-icon>public</mat-icon> {{ 'Public Game' | tr }}
             </button>
         </ng-template>
 
-        <ng-template [ngIf]="!client.isConnected() && !isServerless()">
+        <ng-template [ngIf]="queueDisabled()">
             <span class="offline-msg">{{ 'Offline (Public Queue Unavailable)' | tr }}</span>
         </ng-template>
 

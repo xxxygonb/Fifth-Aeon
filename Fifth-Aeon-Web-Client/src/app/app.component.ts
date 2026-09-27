@@ -12,8 +12,7 @@ export class AppComponent {
     public state = ClientState;
     constructor(
         public client: WebClient,
-        public soundManager: SoundManager,
-        // tagManager: Angulartics2GoogleAnalytics
+        public soundManager: SoundManager
     ) { }
 
     toggleMute() {

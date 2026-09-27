@@ -1,5 +1,6 @@
-import { ISignalingService, SignalMessage } from './signaling/signaling-service';
+﻿import { ISignalingService, SignalMessage } from './signaling/signaling-service';
 import { P2PTransport } from '../p2p-transport';
+import { log } from '../logger';
 import { Observable, Subject, Subscription } from 'rxjs';
 
 import * as SimplePeer from 'simple-peer';
@@ -27,7 +28,7 @@ export class P2PClient implements P2PTransport {
 
         this.peer.on('signal', (data: any) => {
             const type = data.type || 'candidate';
-            console.log('Generating signal:', type, data);
+            log.debug('Generating signal:', type, data);
             this.signaling.sendSignal({
                 type: type,
                 data: data
@@ -35,7 +36,7 @@ export class P2PClient implements P2PTransport {
         });
 
         this.peer.on('connect', () => {
-            console.log('P2P Connected');
+            log.debug('P2P Connected');
             this.connectedSubject.next(true);
         });
 
@@ -45,17 +46,17 @@ export class P2PClient implements P2PTransport {
                 const json = JSON.parse(decoded);
                 this.dataSubject.next(json);
             } catch (e) {
-                console.error('Failed to parse P2P data', e);
+                log.error('Failed to parse P2P data', e);
             }
         });
 
         this.peer.on('error', (err: any) => {
-            console.error('P2P Error', err);
+            log.error('P2P Error', err);
             this.connectedSubject.next(false);
         });
 
         this.peer.on('close', () => {
-            console.log('P2P Closed');
+            log.debug('P2P Closed');
             this.connectedSubject.next(false);
         });
     }
@@ -65,12 +66,12 @@ export class P2PClient implements P2PTransport {
     }
 
     private handleSignal(msg: SignalMessage) {
-        console.log('P2PClient received signal:', msg.type, msg.data);
+        log.debug('P2PClient received signal:', msg.type, msg.data);
         if (this.peer) {
             try {
                 this.peer.signal(msg.data);
             } catch (e) {
-                console.error('Error passing signal to peer:', e, msg.data);
+                log.error('Error passing signal to peer:', e, msg.data);
             }
         }
     }
@@ -80,7 +81,7 @@ export class P2PClient implements P2PTransport {
             const json = JSON.stringify(data);
             this.peer.send(json);
         } else {
-            console.warn('Cannot send, P2P not connected');
+            log.warn('Cannot send, P2P not connected');
         }
     }
 

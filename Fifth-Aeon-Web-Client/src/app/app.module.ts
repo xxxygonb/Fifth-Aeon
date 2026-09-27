@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HotkeyModule } from 'angular2-hotkeys';
-import { Angulartics2Module } from 'angulartics2';
 import { SpeedService } from 'app/speed.service';
 import { UserModule } from 'app/user/user.module';
 // Vendor Angular Modules
@@ -39,7 +38,6 @@ import { LoggedInGuard } from './login.guard';
 import { MaterialModule } from './material.module';
 import { MessengerService } from './messenger.service';
 import { OpenPackComponent } from './open-pack/open-pack.component';
-import { PlayerAvatarComponent } from './player-avatar/player-avatar.component';
 import { Preloader } from './preloader';
 import { QueueComponent } from './queue/queue.component';
 // App Angular Services
@@ -80,15 +78,6 @@ export function initI18n(i18n: I18nService) {
         OpenPackComponent,
         DraftComponent,
         LandingComponent,
-        PlayerAvatarComponent,
-        PlayerAvatarComponent,
-        DailyDialogComponent,
-        P2PDialogComponent
-    ],
-    entryComponents: [
-        EndDialogComponent,
-        DeckImportDialogComponent,
-        DeckMetadataDialogComponent,
         DailyDialogComponent,
         P2PDialogComponent
     ],
@@ -104,7 +93,6 @@ export function initI18n(i18n: I18nService) {
             cheatSheetDescription: hotkeyCheatSheetDescription
         }),
         MaterialModule,
-        Angulartics2Module.forRoot(),
         I18nModule,
         SettingsModule,
         AppRoutingModule

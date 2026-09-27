@@ -4,7 +4,7 @@ Error.stackTraceLimit = 200;
  *
  * 用法(在 Fifth-Aeon-Server 目录,建议加大调用栈以容忍旧 AI 的递归缺陷):
  *   node --stack-size=8000 -r ts-node/register src/tests/aiBenchmark.ts [局数] [AI-A] [AI-B]
- *   AI 名可选: default(当前 DefaultAI) | legacy(改造前快照) | easy | medium | expert(P2 后可用)
+ *   AI 名可选: default(当前 DefaultAI) | easy | medium | expert
  *
  * 输出:胜率(按先后手分列)、平均回合数、单局耗时、僵局/崩溃次数。
  * 对局规则:同一副卡组镜像,先后手各一半,消除先手优势偏差。
@@ -31,10 +31,8 @@ type CtorBundle = Record<string, AIConstructor>;
 
 async function resolveCtors(): Promise<CtorBundle> {
     const mod: any = await import('../game_model/ai/defaultAi');
-    const legacy: any = await import('../game_model/ai/legacyDefaultAi');
     const bundle: CtorBundle = {
-        default: mod.DefaultAI,
-        legacy: legacy.LegacyAI
+        default: mod.DefaultAI
     };
     // P2 难度分档 AI 存在时自动纳入
     for (const name of ['EasyAI', 'MediumAI', 'ExpertAI']) {
@@ -298,8 +296,8 @@ async function bench(
 
 (async () => {
     const games = parseInt(process.argv[2] || '60', 10);
-    const nameA = process.argv[3] || 'legacy';
-    const nameB = process.argv[4] || 'legacy';
+    const nameA = process.argv[3] || 'default';
+    const nameB = process.argv[4] || 'default';
     const ctors = await resolveCtors();
     console.log(`=== AI 基准: ${games} 局 ${nameA} vs ${nameB} ===`);
     await bench(nameA, nameB, games, ctors);

@@ -17,6 +17,20 @@ export abstract class AI {
     protected actionSequence: Array<() => boolean> = [];
     protected animator?: Animator;
     protected thinking = false;
+    /**
+     * 对局克隆器(A4):由宿主注入,提供与真实对局状态一致的
+     * ServerGame 克隆体供推演。基类仅持有;是否使用由子类决定
+     * (如 DefaultAI.useAttackSimulation)。
+     */
+    protected simulator: (() => import('../gameDuplicator').SimulatedGame | null) | null =
+        null;
+
+    /** 宿主注入克隆器(A4);传 null 关闭模拟 */
+    public setSimulator(
+        provider: (() => import('../gameDuplicator').SimulatedGame | null) | null
+    ) {
+        this.simulator = provider;
+    }
 
     /**
      * Construct an Artificial Intelligence that can play the game

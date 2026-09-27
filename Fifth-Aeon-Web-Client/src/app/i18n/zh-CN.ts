@@ -23,7 +23,7 @@ export const zhCNUI: Record<string, string> = {
     'Play vs A.I': '对战 AI',
     'Limited vs A.I': '轮抽对战 AI',
     'Open Packs': '开启卡包',
-    'Play Local Server A.I': '对战本地服务器 AI',
+    'Play Server A.I': '对战服务器 AI',
     'Multiplayer': '多人游戏',
     'Public Game': '公共对战',
     'Offline (Public Queue Unavailable)': '离线（公共匹配不可用）',
@@ -176,9 +176,26 @@ export const zhCNUI: Record<string, string> = {
     'Play Synthesis.': '打出合成。',
     'Play Decay.': '打出凋零。',
     'Play Renewal.': '打出新生。',
+    'Play Growth. (Hotkey G)': '打出生长。（快捷键 G）',
+    'Play Synthesis. (Hotkey S)': '打出合成。（快捷键 S）',
+    'Play Decay. (Hotkey D)': '打出凋零。（快捷键 D）',
+    'Play Renewal. (Hotkey R)': '打出新生。（快捷键 R）',
+    'Choose a resource to play': '选择要打出的资源',
+    'Play a resource first: click an icon at the left or press G/S/D/R.': '请先打出资源：点击左侧资源图标，或按 G/S/D/R 快捷键。',
+    // Draft 页面
+    'Draft record: {w} wins, {l} losses.': '限制赛战绩：{w} 胜 {l} 负。',
+    'A draft costs 200 gold to enter.': '花费 200 金币即可开启一局限制赛。',
+    'You do not have enough gold. Win games to earn more.':
+        '你目前的金币不足，可以通过进行普通对局来赚取金币。',
+    'Start Draft': '开启限制赛',
+    'Play Draft Game': '开始对局',
+    'Retire from Draft': '放弃本次限制赛',
+    'Draft Deck - {n} / {m}': '限制赛卡组 - {n} / {m}',
+    // 无障碍
+    'Your hand': '你的手牌',
     'Play {r} resource.': '打出{r}资源。',
-    'You have {n} avalible energy out of {m} maxium energy. Play resources to increase your energy total.':
-        '你有 {n} 点可用能量，能量上限为 {m} 点。打出资源可以提升能量上限。',
+    'You have {n} energy available out of {m} maximum. Play one resource each turn to raise the maximum.':
+        '可用能量 {n}/{m}（当前/上限）。每回合可打一张资源提升上限。',
     'You have {n} {type}. Play a {type} resource to increase your {type}.':
         '你有 {n} 点{type}。打出{type}资源可以增加你的{type}。',
 

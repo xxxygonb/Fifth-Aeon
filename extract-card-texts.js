@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const MODEL = 'g:/Fifth-Aeon/Fifth-Aeon-Model';
+const MODEL = path.resolve(__dirname, 'Fifth-Aeon-Model');
 const cardsDir = path.join(MODEL, 'cards');
 const out = new Map();
 
